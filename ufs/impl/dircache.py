@@ -2,10 +2,9 @@
 these operations are expensive such as with remote stores.
 '''
 
-import pathlib
 import typing as t
 from ufs.spec import UFS, FileStat
-from ufs.pathlib import SafePosixPath
+from ufs.pathlib import pathparent
 from ufs.utils.cache import TTLCache
 
 class DirCache:
@@ -23,7 +22,7 @@ class DirCache:
 
   def open(self, path: str, mode: t.Literal['rb', 'wb', 'ab', 'rb+', 'ab+']) -> int:
     self._info_cache.discard(path)
-    self._ls_cache.discard(str(SafePosixPath(path).parent))
+    self._ls_cache.discard(pathparent(path))
     fd = self._ufs.open(path, mode)
     self._fds[fd] = path
     return fd
@@ -38,24 +37,24 @@ class DirCache:
   def close(self, fd: int):
     path = self._fds.pop(fd)
     self._info_cache.discard(path)
-    self._ls_cache.discard(str(SafePosixPath(path).parent))
+    self._ls_cache.discard(pathparent(path))
     return self._ufs.close(fd)
   def unlink(self, path: str):
     self._info_cache.discard(path)
-    self._ls_cache.discard(str(SafePosixPath(path).parent))
+    self._ls_cache.discard(pathparent(path))
     return self._ufs.unlink(path)
 
   # optional
   def mkdir(self, path: str):
     self._info_cache.discard(path)
     self._ls_cache.discard(path)
-    self._ls_cache.discard(str(SafePosixPath(path).parent))
+    self._ls_cache.discard(pathparent(path))
     return self._ufs.mkdir(path)
 
   def rmdir(self, path: str):
     self._info_cache.discard(path)
     self._ls_cache.discard(path)
-    self._ls_cache.discard(str(SafePosixPath(path).parent))
+    self._ls_cache.discard(pathparent(path))
     return self._ufs.rmdir(path)
 
   def flush(self, fd: int):
@@ -65,14 +64,14 @@ class DirCache:
   def copy(self, src: str, dst: str):
     self._ufs.copy(src, dst)
     self._info_cache.discard(dst)
-    self._ls_cache.discard(str(pathlib.PurePosixPath(dst).parent))
+    self._ls_cache.discard(pathparent(dst))
 
   def rename(self, src: str, dst: str):
     self._ufs.rename(src, dst)
     self._info_cache.discard(src)
-    self._ls_cache.discard(str(pathlib.PurePosixPath(src).parent))
+    self._ls_cache.discard(pathparent(src))
     self._info_cache.discard(dst)
-    self._ls_cache.discard(str(pathlib.PurePosixPath(dst).parent))
+    self._ls_cache.discard(pathparent(dst))
 
   def __repr__(self) -> str:
     return f"DirCache({repr(self._ufs)})"

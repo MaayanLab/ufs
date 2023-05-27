@@ -121,17 +121,6 @@ class FUSEOps(LoggingMixIn, Operations):
   getxattr = None
   listxattr = None
 
-def safe_predicate(predicate):
-  try: return predicate()
-  except: return False
-
-def wait_for(predicate, interval=0.1, timeout=2.0):
-  import time
-  while not predicate():
-    time.sleep(interval)
-    timeout -= interval
-    if timeout <= 0: raise TimeoutError()
-
 @contextlib.contextmanager
 def fuse_mount(ufs: UFS, mount_dir: str = None):
   import os
@@ -141,6 +130,7 @@ def fuse_mount(ufs: UFS, mount_dir: str = None):
   import functools
   import multiprocessing as mp
   from fuse import FUSE
+  from ufs.utils.polling import wait_for, safe_predicate
   mount_dir = mount_dir or tempfile.mkdtemp()
   fuse = mp.Process(target=FUSE, args=(FUSEOps(ufs), mount_dir), kwargs=dict(foreground=True))
   mount_dir = pathlib.Path(mount_dir)
