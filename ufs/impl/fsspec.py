@@ -17,8 +17,8 @@ class FSSpec(UFS):
     self._fds = {}
   def ls(self, path: str) -> list[str]:
     return [
-      str(pathlib.PurePosixPath(p).relative_to(path))
-      for p in self._fs.ls(path, detail=False)
+      raw_path[raw_path.rfind('/')+1:]
+      for raw_path in self._fs.ls(path, detail=False)
     ]
   def info(self, path: str) -> FileStat:
     info = self._fs.info(path)
