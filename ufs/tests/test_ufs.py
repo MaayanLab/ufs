@@ -7,6 +7,7 @@ from ufs.pathlib import UPath
   'memory',
   'fsspec-local',
   'fsspec-memory',
+  'dircache-local',
 ])
 def ufs(request):
   ''' Result in various UFS implementations
@@ -30,6 +31,12 @@ def ufs(request):
     from ufs.impl.fsspec import FSSpec
     from fsspec.implementations.memory import MemoryFileSystem
     yield Prefix(FSSpec(MemoryFileSystem()))
+  elif request.param == 'dircache-local':
+    import tempfile
+    from ufs.impl.local import Local
+    from ufs.impl.dircache import DirCache
+    with tempfile.TemporaryDirectory() as tmp:
+      yield Prefix(DirCache(Local()), tmp+'/')
 
 def test_map(ufs: UFS):
   from ufs.map import UMap
