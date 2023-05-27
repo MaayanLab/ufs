@@ -21,6 +21,9 @@ class UOS:
   def __init__(self, ufs: UFS):
     self._ufs = ufs
 
+  def __repr__(self):
+    return f"UOS({repr(self._ufs)})"
+
   def access(
     self,
     path: FileDescriptorOrPath,

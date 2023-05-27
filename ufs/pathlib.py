@@ -29,6 +29,9 @@ class UPath:
   def __str__(self):
     return str(self._path)
 
+  def __repr__(self) -> str:
+    return f"UPath({repr(self._ufs)}, {repr(self._path)})"
+
   def __truediv__(self, subpath: str):
     return self.__class__(self._ufs, self._path / str(subpath))
 

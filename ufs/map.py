@@ -11,7 +11,7 @@ class UMap(MutableMapping):
     self._upath = UPath(ufs) if upath is None else upath
 
   def __repr__(self):
-    return f'''UMap({repr({
+    return f'''UMap({repr(self._upath)}, {repr({
       key: self[key]
       for key in self
     })})'''

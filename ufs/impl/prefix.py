@@ -76,3 +76,5 @@ class Prefix(UFS):
     except FileNotFoundError as e:
       raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), e.filename.replace(str(self._prefix), ''))
 
+  def __repr__(self) -> str:
+    return f"Prefix({repr(self._ufs)}, {self._prefix})"

@@ -73,3 +73,6 @@ class DirCache:
     self._ls_cache.discard(str(pathlib.PurePosixPath(src).parent))
     self._info_cache.discard(dst)
     self._ls_cache.discard(str(pathlib.PurePosixPath(dst).parent))
+
+  def __repr__(self) -> str:
+    return f"DirCache({repr(self._ufs)})"

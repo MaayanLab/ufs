@@ -50,3 +50,6 @@ class UFS:
   def rename(self, src: str, dst: str):
     self.copy(src, dst)
     self.unlink(src)
+
+  def __repr__(self) -> str:
+    return f"UFS({self.__class__.__name__})"
