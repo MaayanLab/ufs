@@ -7,7 +7,7 @@ ufs = FSSpec(LocalFileSystem())
 import time
 import typing as t
 import itertools
-import pathlib
+from datetime import datetime
 from ufs.spec import UFS, FileStat
 
 class FSSpec(UFS):
@@ -22,12 +22,18 @@ class FSSpec(UFS):
     ]
   def info(self, path: str) -> FileStat:
     info = self._fs.info(path)
+    atime = info.get('atime', time.time())
+    if isinstance(atime, datetime): atime = atime.timestamp()
+    ctime = info.get('ctime', info.get('created', time.time()))
+    if isinstance(ctime, datetime): ctime = ctime.timestamp()
+    mtime = info.get('mtime', time.time())
+    if isinstance(mtime, datetime): mtime = mtime.timestamp()
     return {
       'type': info['type'],
       'size': info['size'],
-      'atime': info.get('atime', time.time()),
-      'ctime': info.get('ctime', info.get('created', time.time())),
-      'mtime': info.get('mtime', time.time()),
+      'atime': atime,
+      'ctime': ctime,
+      'mtime': mtime,
     }
   def open(self, path: str, mode: t.Literal['rb', 'wb', 'ab', 'rb+', 'ab+']) -> int:
     fd = next(self._cfd)
