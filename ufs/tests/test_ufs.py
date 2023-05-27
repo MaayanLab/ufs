@@ -5,6 +5,8 @@ from ufs.pathlib import UPath
 @pytest.fixture(params=[
   'local',
   'memory',
+  'fsspec-local',
+  'fsspec-memory',
 ])
 def ufs(request):
   ''' Result in various UFS implementations
@@ -18,6 +20,28 @@ def ufs(request):
   elif request.param == 'memory':
     from ufs.impl.memory import Memory
     yield Prefix(Memory())
+  elif request.param == 'fsspec-local':
+    import tempfile
+    from ufs.impl.fsspec import FSSpec
+    from fsspec.implementations.local import LocalFileSystem
+    with tempfile.TemporaryDirectory() as tmp:
+      yield Prefix(FSSpec(LocalFileSystem()), tmp+'/')
+  elif request.param == 'fsspec-memory':
+    from ufs.impl.fsspec import FSSpec
+    from fsspec.implementations.memory import MemoryFileSystem
+    yield Prefix(FSSpec(MemoryFileSystem()))
+
+def test_map(ufs: UFS):
+  from ufs.map import UMap
+  M = UMap(ufs)
+  M['a'] = 'b'
+  M['c'] = {
+    'd': 'e',
+    'f': {'g': 'h'},
+  }
+  assert M['c']['f']['g'] == 'h'
+  del M['c']
+  assert list(M) == ['a']
 
 @pytest.fixture(params=[
   'pathlib',
