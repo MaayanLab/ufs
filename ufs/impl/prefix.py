@@ -68,10 +68,11 @@ class Prefix(UFS):
     try:
       return self._ufs.copy(self._prefix + str(SafePosixPath(src))[1:], self._prefix + str(SafePosixPath(dst))[1:])
     except FileNotFoundError as e:
-      raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), e.filename.replace(str(self._path), ''))
+      raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), e.filename.replace(str(self._prefix), ''))
 
   def rename(self, src: str, dst: str):
     try:
       return self._ufs.rename(self._prefix + str(SafePosixPath(src))[1:], self._prefix + str(SafePosixPath(dst))[1:])
     except FileNotFoundError as e:
-      raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), e.filename.replace(str(self._path), ''))
+      raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), e.filename.replace(str(self._prefix), ''))
+
