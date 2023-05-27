@@ -4,6 +4,7 @@ from ufs.pathlib import UPath
 
 @pytest.fixture(params=[
   'local',
+  'memory',
 ])
 def ufs(request):
   ''' Result in various UFS implementations
@@ -14,6 +15,9 @@ def ufs(request):
     from ufs.impl.local import Local
     with tempfile.TemporaryDirectory() as tmp:
       yield Prefix(Local(), tmp+'/')
+  elif request.param == 'memory':
+    from ufs.impl.memory import Memory
+    yield Prefix(Memory())
 
 @pytest.fixture(params=[
   'pathlib',
