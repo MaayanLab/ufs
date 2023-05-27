@@ -1,0 +1,154 @@
+''' pyfuse Operations on UFS interface
+'''
+import os
+import errno
+import logging
+import contextlib
+from ufs.spec import UFS
+from ufs.os import UOS
+from fuse import LoggingMixIn, Operations, FuseOSError
+
+logger = logging.getLogger(__name__)
+
+class FUSEOps(LoggingMixIn, Operations):
+  def __init__(self, ufs: UFS) -> None:
+    super().__init__()
+    self._os = UOS(ufs)
+    # self._lock = Lock()
+
+  def access(self, path, *args, **kwargs):
+    if not self._os.access(path, *args, **kwargs):
+      raise FuseOSError(errno.EACCES)
+
+  def chmod(self, path, *args, **kwargs):
+    return self._os.chmod(path, *args, **kwargs)
+
+  def chown(self, path, *args, **kwargs):
+    return self._os.chown(path, *args, **kwargs)
+
+  def create(self, path, mode):
+    return self._os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, mode)
+
+  def flush(self, path, fh):
+    return self._os.fsync(fh)
+
+  def fsync(self, path, datasync, fh):
+    if datasync != 0:
+      return self._os.fdatasync(fh)
+    else:
+      return self._os.fsync(fh)
+
+  def getattr(self, path, fh=None):
+    st = self._os.lstat(path)
+    return dict((key, getattr(st, key)) for key in (
+      'st_atime', 'st_ctime', 'st_gid', 'st_mode', 'st_mtime',
+      'st_nlink', 'st_size', 'st_uid'))
+
+  def link(self, target, source):
+    self._os.link(target, source)
+
+  def mkdir(self, path, *args, **kwargs):
+    return self._os.mkdir(path, *args, **kwargs)
+
+  def mknod(self, path, *args, **kwargs):
+    return self._os.mknod(path, *args, **kwargs)
+
+  def open(self, path, *args, **kwargs):
+    return self._os.open(path, *args, **kwargs)
+
+  def readlink(self, path, *args, **kwargs):
+    return self._os.readlink(path, *args, **kwargs)
+
+  def rmdir(self, path, *args, **kwargs):
+    return self._os.rmdir(path, *args, **kwargs)
+
+  def unlink(self, path, *args, **kwargs):
+    return self._os.unlink(path, *args, **kwargs)
+
+  def utimens(self, path, *args, **kwargs):
+    return self._os.utime(path, *args, **kwargs)
+
+  def read(self, path, size, offset, fh):
+    # with self._lock:
+    logger.debug(f"-> read {path=}, {size=}, {offset=}, {fh=}")
+    self._os.lseek(fh, offset, 0)
+    try:
+      result = self._os.read(fh, size)
+    except:
+      import traceback
+      logger.error(f"<- read {traceback.format_exc()}")
+      raise
+    logger.debug(f"<- read {result}")
+    return result
+
+  def readdir(self, path, fh):
+    return ['.', '..'] + self._os.listdir(path)
+
+  def release(self, path, fh):
+    return self._os.close(fh)
+
+  def rename(self, old, new):
+    return self._os.rename(old, new)
+
+  def statfs(self, path):
+    return dict(f_bsize=512, f_blocks=4096, f_bavail=2048)
+
+  # def statfs(self, path):
+  #   stv = self._os.statvfs(path)
+  #   return dict((key, getattr(stv, key)) for key in (
+  #       'f_bavail', 'f_bfree', 'f_blocks', 'f_bsize', 'f_favail',
+  #       'f_ffree', 'f_files', 'f_flag', 'f_frsize', 'f_namemax'))
+
+  def symlink(self, target, source):
+    return self._os.symlink(source, target)
+
+  def truncate(self, path, length, fh=None):
+    self._os.truncate(path, length)
+
+  def write(self, path, data, offset, fh):
+    # with self._lock:
+    logger.debug(f"-> write {path=}, {data=}, {offset=}, {fh=}")
+    try:
+      self._os.lseek(fh, offset, 0)
+      result = self._os.write(fh, data)
+      logger.debug(f"<- write {result}")
+    except:
+      import traceback
+      logger.error(f"<- write {traceback.format_exc()}")
+      raise
+    return result
+
+  getxattr = None
+  listxattr = None
+
+def safe_predicate(predicate):
+  try: return predicate()
+  except: return False
+
+def wait_for(predicate, interval=0.1, timeout=2.0):
+  import time
+  while not predicate():
+    time.sleep(interval)
+    timeout -= interval
+    if timeout <= 0: raise TimeoutError()
+
+@contextlib.contextmanager
+def fuse_mount(ufs: UFS, mount_dir: str = None):
+  import os
+  import signal
+  import pathlib
+  import tempfile
+  import functools
+  import multiprocessing as mp
+  from fuse import FUSE
+  mount_dir = mount_dir or tempfile.mkdtemp()
+  fuse = mp.Process(target=FUSE, args=(FUSEOps(ufs), mount_dir), kwargs=dict(foreground=True))
+  mount_dir = pathlib.Path(mount_dir)
+  fuse.start()
+  wait_for(functools.partial(safe_predicate, mount_dir.is_mount))
+  try:
+    yield mount_dir
+  finally:
+    os.kill(fuse.pid, signal.SIGINT)
+    wait_for(functools.partial(safe_predicate, lambda: not mount_dir.is_mount()))
+    mount_dir.rmdir()

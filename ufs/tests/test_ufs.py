@@ -21,10 +21,15 @@ def ufs(request):
 
 @pytest.fixture(params=[
   'pathlib',
+  'fuse',
 ])
 def path(request, ufs):
   if request.param == 'pathlib':
     yield UPath(ufs)
+  elif request.param == 'fuse':
+    from ufs.fuse import fuse_mount
+    with fuse_mount(ufs) as mount_dir:
+      yield mount_dir
 
 def test_ufs(path: UPath):
   ''' Actually test that filesystem ops work as expected
