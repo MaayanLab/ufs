@@ -16,12 +16,14 @@ def SafePosixPath(path: str):
   return p
 
 def pathparent(path: str):
-  parent, _, _name = path.rstrip('/').rpartition('/')
-  return parent
+  parent, sep, _name = path.rstrip('/').rpartition('/')
+  if parent == '': return sep or ''
+  else: return parent
 
 def pathname(path: str):
-  _parent, _, name = path.rstrip('/').rpartition('/')
-  return name
+  _parent, sep, name = path.rstrip('/').rpartition('/')
+  if not name: return sep or ''
+  else: return name
 
 class UPath:
   ''' A class implementing `pathlib.Path` methods for a `ufs`
