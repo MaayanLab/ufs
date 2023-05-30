@@ -46,6 +46,8 @@ class UFS:
     dst_fd = self.open(dst, 'w')
     while buf := self.read(src_fd, 5*1024):
       self.write(dst_fd, buf)
+    self.close(dst)
+    self.close(src)
 
   def rename(self, src: str, dst: str):
     self.copy(src, dst)
