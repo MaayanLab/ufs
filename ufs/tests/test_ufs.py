@@ -56,16 +56,21 @@ def test_map(ufs: UFS):
 ])
 def path(request, ufs):
   if request.param == 'pathlib':
-    yield UPath(ufs)
+    upath = UPath(ufs)
+    if not upath.exists(): upath.mkdir()
+    upath = upath / 'pathlib'
+    upath.mkdir()
+    yield upath
   elif request.param == 'fuse':
     from ufs.fuse import fuse_mount
     with fuse_mount(ufs) as mount_dir:
+      mount_dir = mount_dir / 'fuse'
+      mount_dir.mkdir()
       yield mount_dir
 
 def test_ufs(path: UPath):
   ''' Actually test that filesystem ops work as expected
   '''
-  assert path.exists()
   (path/'A').write_text('Hello World!')
   assert (path/'A').exists()
   with (path/'A').open('r+') as fh:
@@ -81,6 +86,6 @@ def test_ufs(path: UPath):
     fa.write('!')
   with pytest.raises(FileNotFoundError): (path/'A').read_text()
   assert (path/'B').read_text() == 'hello world!!'
-  assert next(iter(path.iterdir())).name == 'B'
+  assert [p.name for p in path.iterdir()] == ['B']
   (path/'B').unlink()
   assert not (path/'B').exists()
