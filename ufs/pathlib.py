@@ -36,6 +36,10 @@ class UPath:
   def name(self):
     return self._path.name
 
+  @property
+  def parent(self):
+    return UPath(self._ufs, self._path.parent)
+
   def __str__(self):
     return str(self._path)
 
