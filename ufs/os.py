@@ -96,11 +96,12 @@ class UOS:
     dir_fd: int | None = None
   ) -> os.stat_result:
     info = self._ufs.info(path)
+    nlink = 2 + len(self._ufs.ls(path)) if info['type'] == 'directory' else 1
     return os.stat_result([
-      (stat.S_IFREG if info['type'] == 'file' else stat.S_IFDIR) | 0o755,#st_mode
+      (stat.S_IFREG | 0o644 if info['type'] == 'file' else stat.S_IFDIR | 0o755),#st_mode
       0,#st_ino
       0,#st_dev
-      1 if info['type'] == 'file' else 2,#st_nlink
+      nlink,#st_nlink
       int(os.environ.get('UID', 1000)),#st_uid
       int(os.environ.get('GID', 1000)),#st_gid
       info['size'] if info['type'] == 'file' else 0,#st_size
