@@ -127,22 +127,20 @@ def fuse(ufs_spec: dict, mount_dir: str):
 
 @contextlib.contextmanager
 def fuse_mount(ufs: UFS, mount_dir: str = None):
-  import os
   import signal
   import pathlib
   import tempfile
   import functools
   import multiprocessing as mp
+  from ufs.utils.process import active_process
   from ufs.utils.polling import wait_for, safe_predicate
   mount_dir = mount_dir or tempfile.mkdtemp()
   ufs_spec = ufs.to_dict()
-  proc = mp.Process(target=fuse, args=(ufs_spec, mount_dir))
-  mount_dir = pathlib.Path(mount_dir)
-  proc.start()
-  wait_for(functools.partial(safe_predicate, mount_dir.is_mount))
   try:
-    yield mount_dir
+    with active_process(mp.Process(target=fuse, args=(ufs_spec, mount_dir)), terminate_signal=signal.SIGINT):
+      mount_dir = pathlib.Path(mount_dir)
+      wait_for(functools.partial(safe_predicate, mount_dir.is_mount))
+      yield mount_dir
   finally:
-    os.kill(proc.pid, signal.SIGINT)
     wait_for(functools.partial(safe_predicate, lambda: not mount_dir.is_mount()))
     mount_dir.rmdir()

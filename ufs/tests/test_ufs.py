@@ -54,6 +54,7 @@ def ufs(request):
       from subprocess import Popen
       from ufs.impl.s3 import S3
       from ufs.utils.polling import wait_for, safe_predicate
+      from ufs.utils.process import active_process
       # get a temporary directory to store s3 files in
       with tempfile.TemporaryDirectory() as tmp:
         # generate credentials for minio
@@ -63,7 +64,7 @@ def ufs(request):
           s.bind(('', 0))
           host, port = s.getsockname()
         # actually run minio
-        proc = Popen(
+        with active_process(Popen(
           [minio, 'server', tmp, '--address', f"{host}:{port}"],
           env=dict(
             os.environ,
@@ -72,25 +73,21 @@ def ufs(request):
           ),
           stderr=sys.stderr,
           stdout=sys.stdout,
-        )
-        # wait for minio to be running & ready
-        wait_for(functools.partial(safe_predicate, lambda: urlopen(Request(f"http://{host}:{port}/minio/health/live", method='HEAD')).status == 200))
-        # create an fsspec connection to the minio server
-        ufs = Prefix(
-          S3(
-            access_key=MINIO_ROOT_USER,
-            secret_access_key=MINIO_ROOT_PASSWORD,
-            endpoint_url=f"http://{host}:{port}",
-          ),
-          f"/test/",
-        )
-        try: ufs.mkdir('/')
-        except FileExistsError: pass
-        try:
+        )):
+          # wait for minio to be running & ready
+          wait_for(functools.partial(safe_predicate, lambda: urlopen(Request(f"http://{host}:{port}/minio/health/live", method='HEAD')).status == 200))
+          # create an fsspec connection to the minio server
+          ufs = Prefix(
+            S3(
+              access_key=MINIO_ROOT_USER,
+              secret_access_key=MINIO_ROOT_PASSWORD,
+              endpoint_url=f"http://{host}:{port}",
+            ),
+            f"/test/",
+          )
+          try: ufs.mkdir('/')
+          except FileExistsError: pass
           yield ufs
-        finally:
-          # shut down the minio server
-          proc.terminate()
 
 def test_map(ufs: UFS):
   from ufs.map import UMap
