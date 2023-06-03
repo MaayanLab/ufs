@@ -55,6 +55,120 @@ class SimpleCacheFileSystemEx(SimpleCacheFileSystem):
 
 
 class S3FileSystemEx(S3FileSystem):
+
+    async def _info(self, path, bucket=None, key=None, refresh=False, version_id=None):
+        '''
+        FIX: info didn't work for buckets, now we check for the bucket in _lsbuckets when key is falsey
+        '''
+        from s3fs.core import version_id_kw, ClientError, translate_boto_error, ParamValidationError
+        def _coalesce_version_id(*args):
+            """Helper to coalesce a list of version_ids down to one"""
+            version_ids = set(args)
+            if None in version_ids:
+                version_ids.remove(None)
+            if len(version_ids) > 1:
+                raise ValueError(
+                    "Cannot coalesce version_ids where more than one are defined,"
+                    " {}".format(version_ids)
+                )
+            elif len(version_ids) == 0:
+                return None
+            else:
+                return version_ids.pop()
+
+        path = self._strip_protocol(path)
+        bucket, key, path_version_id = self.split_path(path)
+        if version_id is not None:
+            if not self.version_aware:
+                raise ValueError(
+                    "version_id cannot be specified if the "
+                    "filesystem is not version aware"
+                )
+        if path in ["/", ""]:
+            return {"name": path, "size": 0, "type": "directory"}
+        version_id = _coalesce_version_id(path_version_id, version_id)
+        if not refresh:
+            out = self._ls_from_cache(path)
+            if out is not None:
+                if self.version_aware and version_id is not None:
+                    # If cached info does not match requested version_id,
+                    # fallback to calling head_object
+                    out = [
+                        o
+                        for o in out
+                        if o["name"] == path and version_id == o.get("VersionId")
+                    ]
+                    if out:
+                        return out[0]
+                else:
+                    out = [o for o in out if o["name"] == path]
+                    if out:
+                        return out[0]
+                    return {"name": path, "size": 0, "type": "directory"}
+        if key:
+            try:
+                out = await self._call_s3(
+                    "head_object",
+                    self.kwargs,
+                    Bucket=bucket,
+                    Key=key,
+                    **version_id_kw(version_id),
+                    **self.req_kw,
+                )
+                return {
+                    "ETag": out.get("ETag", ""),
+                    "LastModified": out["LastModified"],
+                    "size": out["ContentLength"],
+                    "name": "/".join([bucket, key]),
+                    "type": "file",
+                    "StorageClass": out.get("StorageClass", "STANDARD"),
+                    "VersionId": out.get("VersionId"),
+                    "ContentType": out.get("ContentType"),
+                }
+            except FileNotFoundError:
+                pass
+            except ClientError as e:
+                raise translate_boto_error(e, set_cause=False)
+        else:
+            for info in await self._lsbuckets():
+                if info['name'] == bucket:
+                  return {
+                      "name": bucket,
+                      "Size": 0,
+                      "StorageClass": "BUCKET",
+                      "size": 0,
+                      "type": "directory",
+                  }
+        try:
+            # We check to see if the path is a directory by attempting to list its
+            # contexts. If anything is found, it is indeed a directory
+            out = await self._call_s3(
+                "list_objects_v2",
+                self.kwargs,
+                Bucket=bucket,
+                Prefix=key.rstrip("/") + "/" if key else "",
+                Delimiter="/",
+                MaxKeys=1,
+                **self.req_kw,
+            )
+            if (
+                out.get("KeyCount", 0) > 0
+                or out.get("Contents", [])
+                or out.get("CommonPrefixes", [])
+            ):
+                return {
+                    "name": "/".join([bucket, key]),
+                    "type": "directory",
+                    "size": 0,
+                    "StorageClass": "DIRECTORY",
+                }
+
+            raise FileNotFoundError(path)
+        except ClientError as e:
+            raise translate_boto_error(e, set_cause=False)
+        except ParamValidationError as e:
+            raise ValueError("Failed to list path %r: %s" % (path, e))
+
     async def _mkdir(self, path, acl="", create_parents=True, **kwargs):
         '''
         If we create an empty directory, we'll add it to `dircache`
