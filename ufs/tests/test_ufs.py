@@ -110,9 +110,7 @@ def test_map(ufs: UFS):
 ])
 def path(request, ufs):
   if request.param == 'pathlib':
-    upath = UPath(ufs)
-    if not upath.exists(): upath.mkdir()
-    upath = upath / 'pathlib'
+    upath = UPath(ufs)  / 'pathlib'
     upath.mkdir()
     yield upath
   elif request.param == 'fuse':
