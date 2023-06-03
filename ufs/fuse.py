@@ -121,6 +121,10 @@ class FUSEOps(LoggingMixIn, Operations):
   getxattr = None
   listxattr = None
 
+def fuse(ufs_spec: dict, mount_dir: str):
+  from fuse import FUSE
+  FUSE(FUSEOps(UFS.from_dict(**ufs_spec)), mount_dir, foreground=True)
+
 @contextlib.contextmanager
 def fuse_mount(ufs: UFS, mount_dir: str = None):
   import os
@@ -129,16 +133,16 @@ def fuse_mount(ufs: UFS, mount_dir: str = None):
   import tempfile
   import functools
   import multiprocessing as mp
-  from fuse import FUSE
   from ufs.utils.polling import wait_for, safe_predicate
   mount_dir = mount_dir or tempfile.mkdtemp()
-  fuse = mp.Process(target=FUSE, args=(FUSEOps(ufs), mount_dir), kwargs=dict(foreground=True))
+  ufs_spec = ufs.to_dict()
+  proc = mp.Process(target=fuse, args=(ufs_spec, mount_dir))
   mount_dir = pathlib.Path(mount_dir)
-  fuse.start()
+  proc.start()
   wait_for(functools.partial(safe_predicate, mount_dir.is_mount))
   try:
     yield mount_dir
   finally:
-    os.kill(fuse.pid, signal.SIGINT)
+    os.kill(proc.pid, signal.SIGINT)
     wait_for(functools.partial(safe_predicate, lambda: not mount_dir.is_mount()))
     mount_dir.rmdir()
