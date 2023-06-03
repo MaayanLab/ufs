@@ -106,8 +106,9 @@ def test_map(ufs: UFS):
   'fuse',
 ])
 def path(request, ufs):
+  ufs.info('/')
   if request.param == 'pathlib':
-    upath = UPath(ufs)  / 'pathlib'
+    upath = UPath(ufs) / 'pathlib'
     upath.mkdir()
     yield upath
   elif request.param == 'fuse':
@@ -120,6 +121,7 @@ def path(request, ufs):
 def test_ufs(path: UPath):
   ''' Actually test that filesystem ops work as expected
   '''
+  assert path.exists()
   (path/'A').write_text('Hello World!')
   assert (path/'A').exists()
   with (path/'A').open('r+') as fh:
