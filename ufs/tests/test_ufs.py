@@ -86,9 +86,11 @@ def ufs(request):
         )
         try: ufs.mkdir('/')
         except FileExistsError: pass
-        yield ufs
-        # shut down the minio server
-        proc.terminate()
+        try:
+          yield ufs
+        finally:
+          # shut down the minio server
+          proc.terminate()
 
 def test_map(ufs: UFS):
   from ufs.map import UMap
