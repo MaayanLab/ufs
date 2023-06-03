@@ -75,8 +75,14 @@ class UPath:
   def unlink(self):
     self._ufs.unlink(str(self._path))
 
-  def mkdir(self):
-    self._ufs.mkdir(str(self._path))
+  def mkdir(self, parents=False, exist_ok=False):
+    try:
+      if parents:
+        if not self.parent.exists():
+          self.parent.mkdir(parents=True)
+      self._ufs.mkdir(str(self._path))
+    except FileExistsError as e:
+      if not exist_ok: raise e
 
   def rmdir(self):
     self._ufs.rmdir(str(self._path))
