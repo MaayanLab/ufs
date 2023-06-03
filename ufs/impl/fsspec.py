@@ -24,11 +24,26 @@ def fsspec_ls(fs, path: str):
   return ret
 
 class FSSpec(UFS):
-  def __init__(self, fs, ttl=60) -> None:
+  def __init__(self, fs, ttl=60):
+    super().__init__()
+    self._ttl = ttl
     self._fs = fs
     self._cfd = iter(itertools.count(start=5))
     self._fds = {}
     self._ls_cache = TTLCache(resolve=functools.partial(fsspec_ls, self._fs), ttl=ttl)
+
+  @staticmethod
+  def from_dict(*, fs, ttl):
+    return FSSpec(
+      fs=fsspec.AbstractFileSystem.from_json(json.dumps(fs)),
+      ttl=ttl,
+    )
+
+  def to_dict(self):
+    return dict(super().to_dict(),
+      fs=json.loads(self._fs.to_json()),
+      ttl=self._ttl,
+    )
 
   def _path(self, path: str):
     return self._fs.root_marker + path[1:]

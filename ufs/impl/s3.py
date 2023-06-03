@@ -4,13 +4,35 @@ from ufs.impl.fsspec import FSSpec
 from s3fs import S3FileSystem
 from fsspec.implementations.cached import SimpleCacheFileSystem
 
-class S3(FSSpec):
+
+class S3(FSSpec, UFS):
   ''' FSSpec's S3 has some quirks we'll want to deal with
   '''
   def __init__(self, access_key, secret_access_key, endpoint_url='https://s3.amazonaws.com'):
-    super().__init__(SimpleCacheFileSystem(
-      fs=S3FileSystem(key=access_key, secret=secret_access_key, endpoint_url=endpoint_url)
-    ))
+    self._access_key = access_key
+    self._secret_access_key = secret_access_key
+    self._endpoint_url = endpoint_url
+    super().__init__(
+      SimpleCacheFileSystem(
+        fs=S3FileSystem(key=access_key, secret=secret_access_key,
+                        client_kwargs=dict(endpoint_url=endpoint_url)),
+      )
+    )
+
+  @staticmethod
+  def from_dict(*, access_key, secret_access_key, endpoint_url):
+    return S3(
+      access_key=access_key,
+      secret_access_key=secret_access_key,
+      endpoint_url=endpoint_url
+    )
+
+  def to_dict(self):
+    return dict(UFS.to_dict(self),
+      access_key=self._access_key,
+      secret_access_key=self._secret_access_key,
+      endpoint_url=self._endpoint_url
+    )
 
   def open(self, path: str, mode: t.Literal['rb', 'wb', 'ab', 'rb+', 'ab+']) -> int:
     ''' s3fs doesn't seem to throw FileNotFound when opening non-existing files for reading.

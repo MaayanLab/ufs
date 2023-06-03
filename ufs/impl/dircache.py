@@ -7,12 +7,21 @@ from ufs.spec import UFS, FileStat
 from ufs.pathlib import pathparent
 from ufs.utils.cache import TTLCache
 
-class DirCache:
+class DirCache(UFS):
   def __init__(self, ufs: UFS, ttl=60):
+    super().__init__()
+    self._ttl = ttl
     self._ufs = ufs
     self._ls_cache = TTLCache(resolve=self._ufs.ls, ttl=ttl)
     self._info_cache = TTLCache(resolve=self._ufs.info, ttl=ttl)
     self._fds = {}
+
+  @staticmethod
+  def from_dict(*, ufs, ttl):
+    return DirCache(UFS.from_dict(**ufs), ttl=ttl)
+
+  def to_dict(self):
+    return dict(super().to_dict(), ufs=self._ufs.to_dict(), ttl=self._ttl)
 
   def ls(self, path: str) -> list[str]:
     return self._ls_cache(path)

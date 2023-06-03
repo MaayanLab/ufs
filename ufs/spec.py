@@ -12,6 +12,15 @@ class FileStat(t.TypedDict):
 class UFS:
   ''' A generic class interface for universal file system implementations
   '''
+  @staticmethod
+  def from_dict(*, cls, **kwargs):
+    cls = { c.__name__: c for c in UFS.__subclasses__()}[cls]
+    if cls.from_dict is UFS.from_dict: return cls(**kwargs)
+    else: return cls.from_dict(**kwargs)
+
+  def to_dict(self):
+    return dict(cls=self.__class__.__name__)
+
   # essential
   def ls(self, path: str) -> list[str]:
     raise NotImplementedError()

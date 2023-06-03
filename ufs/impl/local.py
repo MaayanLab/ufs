@@ -7,7 +7,7 @@ import itertools
 from ufs.spec import UFS, FileStat
 
 class Local(UFS):
-  def __init__(self) -> None:
+  def __init__(self):
     super().__init__()
     self._cfd = iter(itertools.count(start=5))
     self._fds = {}

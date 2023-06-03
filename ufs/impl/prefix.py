@@ -16,8 +16,23 @@ logger = logging.getLogger(__name__)
 
 class Prefix(UFS):
   def __init__(self, ufs: UFS, prefix: str = '/'):
+    super().__init__()
     self._ufs = ufs
     self._prefix = prefix
+
+  @staticmethod
+  def from_dict(*, ufs, prefix):
+    return Prefix(
+      ufs=UFS.from_dict(**ufs),
+      prefix=prefix,
+    )
+
+  def to_dict(self):
+    return dict(super().to_dict(),
+      ufs=self._ufs.to_dict(),
+      prefix=self._prefix,
+    )
+
   def _path(self, path: str):
     return self._prefix + str(SafePosixPath(path))[1:]
   def ls(self, path: str) -> list[str]:
