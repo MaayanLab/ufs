@@ -38,5 +38,11 @@ class TTLCache(t.Generic[T]):
     else:
       return item.val
 
+  def __setitem__(self, key: str, val: T):
+    self._cache[key] = CacheEntry(
+      val=val,
+      ttl=time.time()+self._ttl,
+    )
+
   def discard(self, key: str):
     self._cache.pop(key, None)
