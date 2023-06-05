@@ -22,6 +22,13 @@ def ufs(request):
   elif request.param == 'memory':
     from ufs.impl.memory import Memory
     yield Prefix(Memory())
+  elif request.param == 'process-memory':
+    from ufs.impl.process import Process
+    from ufs.impl.memory import Memory
+    ufs = Process(Prefix(Memory()))
+    ufs.start()
+    yield ufs
+    ufs.stop()
   elif request.param == 'fsspec-local':
     import tempfile
     from ufs.impl.fsspec import FSSpec
