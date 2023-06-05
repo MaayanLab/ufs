@@ -139,9 +139,9 @@ def path(request, ufs):
 def test_ufs(path: UPath):
   ''' Actually test that filesystem ops work as expected
   '''
-  assert path.exists()
+  assert path.is_dir()
   (path/'A').write_text('Hello World!')
-  assert (path/'A').exists()
+  assert (path/'A').is_file()
   with (path/'A').open('r+') as fh:
     assert fh.read() == 'Hello World!'
     fh.seek(0)
