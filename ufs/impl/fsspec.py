@@ -78,7 +78,9 @@ class FSSpec(UFS):
     return list(listing.keys())
 
   def info(self, path: str) -> FileStat:
-    return self._info_cache(self._path(path))
+    info = self._info_cache(self._path(path))
+    if info is None: raise FileNotFoundError(path)
+    return info
 
   def open(self, path: str, mode: t.Literal['rb', 'wb', 'ab', 'rb+', 'ab+']) -> int:
     fd = next(self._cfd)
