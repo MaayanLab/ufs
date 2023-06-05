@@ -33,7 +33,7 @@ class Process(UFS):
     )
   
   def _forward(self, op, *args, **kwargs):
-    self._ensure_proc()
+    self.start()
     self._send.put([op, args, kwargs])
     ret, err = self._recv.get(timeout=1)
     if err is not None: raise err
