@@ -1,0 +1,3 @@
+fsspec
+fusepy
+s3fs
