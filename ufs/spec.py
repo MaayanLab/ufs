@@ -48,6 +48,10 @@ class UFS:
     pass
   def flush(self, fd: int):
     pass
+  def start(self):
+    pass
+  def stop(self):
+    pass
 
   # fallback
   def copy(self, src: str, dst: str):
