@@ -96,7 +96,7 @@ class FSSpec(UFS):
   def write(self, fd: int, data: bytes) -> int:
     return self._fds[fd][1].write(data)
   def truncate(self, fd: int, length: int):
-    return self._fds[fd][1].trunate(length)
+    return self._fds[fd][1].truncate(length)
   def close(self, fd: int):
     path, fh = self._fds.pop(fd)
     self._info_cache.discard(self._path(path))

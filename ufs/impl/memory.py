@@ -60,7 +60,7 @@ class Memory(UFS):
   def write(self, fd: int, data: bytes) -> int:
     return self._fds[fd].stream.write(data)
   def truncate(self, fd: int, length: int):
-    self._fds[fd].stream.trunate(length)
+    self._fds[fd].stream.truncate(length)
 
   def close(self, fd: int):
     descriptor = self._fds.pop(fd)

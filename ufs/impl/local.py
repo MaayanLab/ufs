@@ -39,7 +39,7 @@ class Local(UFS):
   def write(self, fd: int, data: bytes) -> int:
     return self._fds[fd].write(data)
   def truncate(self, fd: int, length: int):
-    self._fds[fd].trunate(length)
+    self._fds[fd].truncate(length)
   def close(self, fd: int):
     return self._fds.pop(fd).close()
   def unlink(self, path: str):
