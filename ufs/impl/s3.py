@@ -3,8 +3,10 @@
 This is based off of s3fs from the fsspec ecosystem, but with several patches to successfully pass our test suite.
 '''
 
+import time
 import typing as t
-from ufs.spec import UFS
+from ufs.spec import UFS, FileStat
+from ufs.pathlib import pathparent, pathname
 from ufs.impl.fsspec import FSSpec
 from s3fs import S3FileSystem
 from fsspec.implementations.cached import SimpleCacheFileSystem
@@ -252,6 +254,8 @@ class S3(FSSpec, UFS):
     self._access_key = access_key
     self._secret_access_key = secret_access_key
     self._endpoint_url = endpoint_url
+    self._dirs: dict[str, FileStat] = {}
+
     super().__init__(
       SimpleCacheFileSystemEx(
         fs=S3FileSystemEx(key=access_key, secret=secret_access_key,
@@ -280,6 +284,34 @@ class S3(FSSpec, UFS):
     if 'r' in mode:
       self.info(path)
     return FSSpec.open(self, path, mode)
+
+  def ls(self, path: str) -> list[str]:
+    return super().ls(path) + [pathname(p) for p in self._dirs if pathparent(p) == path]
+
+  def info(self, path: str) -> FileStat:
+    if path.count('/') >= 2 and path in self._dirs:
+      return self._dirs[path]
+    return super().info(path)
+
+  def mkdir(self, path: str):
+    if path.count('/') >= 2:
+      if path in self._dirs: raise FileExistsError(path)
+      self._dirs[path.rstrip('/')] = {
+        'type': 'directory',
+        'size': 0,
+        'atime': time.time(),
+        'ctime': time.time(),
+        'mtime': time.time(),
+      }
+    return super().mkdir(path)
+
+  def rmdir(self, path: str):
+    if path.count('/') >= 2:
+      try:
+        self._dirs.pop(path)
+      except KeyError:
+        raise FileNotFoundError(path)
+    return super().rmdir(path)
 
   def rename(self, src: str, dst: str):
     ''' s3fs doesn't support rename, use the fallback
