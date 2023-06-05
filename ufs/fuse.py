@@ -123,7 +123,10 @@ class FUSEOps(LoggingMixIn, Operations):
 
 def fuse(ufs_spec: dict, mount_dir: str):
   from fuse import FUSE
-  FUSE(FUSEOps(UFS.from_dict(**ufs_spec)), mount_dir, foreground=True)
+  ufs = UFS.from_dict(**ufs_spec)
+  ufs.start()
+  FUSE(FUSEOps(ufs), mount_dir, foreground=True)
+  ufs.stop()
 
 @contextlib.contextmanager
 def fuse_mount(ufs: UFS, mount_dir: str = None):
