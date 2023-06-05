@@ -34,7 +34,9 @@ class Prefix(UFS):
     )
 
   def _path(self, path: str):
-    return self._prefix + str(SafePosixPath(path))[1:]
+    if path in ['','/'] and self._prefix in ['','/']: return self._prefix
+    return (self._prefix + str(SafePosixPath(path))[1:]).rstrip('/')
+
   def ls(self, path: str) -> list[str]:
     try:
       return self._ufs.ls(self._path(path))
