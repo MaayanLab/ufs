@@ -88,6 +88,17 @@ def ufs(request):
           try: ufs.mkdir('/')
           except FileExistsError: pass
           yield ufs
+def test_os(ufs: UFS):
+  from ufs.os import UOS
+  os = UOS(ufs)
+  assert os.access('/', 511)
+  logger.debug(os.lstat('/'))
+  os.mkdir('/test')
+  logger.debug(os.lstat('/test'))
+  assert os.listdir('/') == ['test']
+  os.rmdir('/test')
+  assert os.listdir('/') == []
+  with pytest.raises(FileNotFoundError): os.lstat('/test')
 
 def test_map(ufs: UFS):
   from ufs.map import UMap
