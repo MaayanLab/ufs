@@ -35,7 +35,7 @@ class Process(UFS):
   def _forward(self, op, *args, **kwargs):
     self.start()
     self._send.put([op, args, kwargs])
-    ret, err = self._recv.get(timeout=1)
+    ret, err = self._recv.get()
     if err is not None: raise err
     else: return ret
 
@@ -86,7 +86,7 @@ class Process(UFS):
       self._send, self._recv = mp.Queue(), mp.Queue()
       self._proc = mp.Process(target=ufs_proc, args=(self._recv, self._send, self._ufs.to_dict()))
       self._proc.start()
-      self._proc('start')
+      self._forward('start')
 
   def stop(self):
     if hasattr(self, '_proc'):
