@@ -5,6 +5,7 @@ from ufs.pathlib import UPath
 @pytest.fixture(params=[
   'local',
   'memory',
+  'process-memory',
   'fsspec-local',
   'fsspec-memory',
   'dircache-local',
@@ -92,16 +93,14 @@ def ufs(request):
             ),
             f"/test/",
           )
-          try: ufs.mkdir('/')
-          except FileExistsError: pass
+          ufs.mkdir('/')
           yield ufs
+
 def test_os(ufs: UFS):
   from ufs.os import UOS
   os = UOS(ufs)
   assert os.access('/', 511)
-  logger.debug(os.lstat('/'))
   os.mkdir('/test')
-  logger.debug(os.lstat('/test'))
   assert os.listdir('/') == ['test']
   os.rmdir('/test')
   assert os.listdir('/') == []
