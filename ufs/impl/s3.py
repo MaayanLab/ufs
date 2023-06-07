@@ -257,6 +257,7 @@ class S3(FSSpec, UFS):
     self._secret_access_key = secret_access_key
     self._endpoint_url = endpoint_url
     self._dirs: dict[str, FileStat] = {}
+    self._blankfiles: dict[str, FileStat] = {}
 
     super().__init__(
       SimpleCacheFileSystemEx(
@@ -285,12 +286,38 @@ class S3(FSSpec, UFS):
     '''
     if 'r' in mode:
       self.info(path)
+    elif 'w' in mode:
+      self._blankfiles[path] = {
+        'type': 'file',
+        'size': 0,
+        'atime': time.time(),
+        'ctime': time.time(),
+        'mtime': time.time(),
+      }
     return FSSpec.open(self, path, mode)
 
+  def write(self, fd: int, data: bytes) -> int:
+    ret = super().write(fd, data)
+    path, _ = self._fds[fd]
+    if path in self._blankfiles:
+      self._blankfiles[path]['size'] += ret
+    return ret
+
+  def close(self, fd: int):
+    path, _fh = self._fds[fd]
+    FSSpec.close(self, fd)
+    self._blankfiles.pop(path, None)
+
   def ls(self, path: str) -> list[str]:
-    return FSSpec.ls(self, path) + [pathname(p) for p in self._dirs if pathparent(p) == path]
+    return (
+      FSSpec.ls(self, path)
+      + [pathname(p) for p in self._dirs if pathparent(p) == path]
+      + [pathname(p) for p in self._blankfiles if pathparent(p) == path]
+    )
 
   def info(self, path: str) -> FileStat:
+    if path in self._blankfiles:
+       return self._blankfiles[path]
     if path.count('/') >= 2 and path in self._dirs:
       return self._dirs[path]
     return FSSpec.info(self, path)
@@ -298,7 +325,7 @@ class S3(FSSpec, UFS):
   def mkdir(self, path: str):
     if path.count('/') >= 2:
       if path in self._dirs: raise FileExistsError(path)
-      self._dirs[path.rstrip('/')] = {
+      self._dirs[path] = {
         'type': 'directory',
         'size': 0,
         'atime': time.time(),
