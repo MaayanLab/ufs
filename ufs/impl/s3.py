@@ -171,6 +171,8 @@ class S3FileSystemEx(S3FileSystem):
         except ParamValidationError as e:
             raise ValueError("Failed to list path %r: %s" % (path, e))
 
+    info = sync_wrapper(_info)
+
     async def _mkdir(self, path, acl="", create_parents=True, **kwargs):
         '''
         If we create an empty directory, we'll add it to `dircache`
@@ -259,7 +261,7 @@ class S3(FSSpec, UFS):
     super().__init__(
       SimpleCacheFileSystemEx(
         fs=S3FileSystemEx(key=access_key, secret=secret_access_key,
-                        client_kwargs=dict(endpoint_url=endpoint_url)),
+                          client_kwargs=dict(endpoint_url=endpoint_url)),
       )
     )
 
@@ -286,12 +288,12 @@ class S3(FSSpec, UFS):
     return FSSpec.open(self, path, mode)
 
   def ls(self, path: str) -> list[str]:
-    return super().ls(path) + [pathname(p) for p in self._dirs if pathparent(p) == path]
+    return FSSpec.ls(self, path) + [pathname(p) for p in self._dirs if pathparent(p) == path]
 
   def info(self, path: str) -> FileStat:
     if path.count('/') >= 2 and path in self._dirs:
       return self._dirs[path]
-    return super().info(path)
+    return FSSpec.info(self, path)
 
   def mkdir(self, path: str):
     if path.count('/') >= 2:
@@ -303,7 +305,7 @@ class S3(FSSpec, UFS):
         'ctime': time.time(),
         'mtime': time.time(),
       }
-    return super().mkdir(path)
+    return FSSpec.mkdir(self, path)
 
   def rmdir(self, path: str):
     if path.count('/') >= 2:
@@ -311,7 +313,7 @@ class S3(FSSpec, UFS):
         self._dirs.pop(path)
       except KeyError:
         raise FileNotFoundError(path)
-    return super().rmdir(path)
+    return FSSpec.rmdir(self, path)
 
   def rename(self, src: str, dst: str):
     ''' s3fs doesn't support rename, use the fallback
