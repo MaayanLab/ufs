@@ -3,6 +3,7 @@
 import os
 import errno
 import logging
+import pathlib
 import contextlib
 from ufs.spec import UFS
 from ufs.os import UOS
@@ -131,20 +132,18 @@ def fuse(ufs_spec: dict, mount_dir: str):
 @contextlib.contextmanager
 def fuse_mount(ufs: UFS, mount_dir: str = None):
   import signal
-  import pathlib
   import tempfile
   import functools
   import multiprocessing as mp
   from ufs.utils.process import active_process
   from ufs.utils.polling import wait_for, safe_predicate
   mp_spawn = mp.get_context('spawn')
-  mount_dir = mount_dir or tempfile.mkdtemp()
+  mount_dir_resolved = pathlib.Path(mount_dir or tempfile.mkdtemp())
   ufs_spec = ufs.to_dict()
   try:
-    with active_process(mp_spawn.Process(target=fuse, args=(ufs_spec, mount_dir)), terminate_signal=signal.SIGINT):
-      mount_dir = pathlib.Path(mount_dir)
-      wait_for(functools.partial(safe_predicate, mount_dir.is_mount))
-      yield mount_dir
+    with active_process(mp_spawn.Process(target=fuse, args=(ufs_spec, str(mount_dir_resolved))), terminate_signal=signal.SIGINT):
+      wait_for(functools.partial(safe_predicate, mount_dir_resolved.is_mount))
+      yield mount_dir_resolved
   finally:
-    wait_for(functools.partial(safe_predicate, lambda: not mount_dir.is_mount()))
-    mount_dir.rmdir()
+    wait_for(functools.partial(safe_predicate, lambda: not mount_dir_resolved.is_mount()))
+    mount_dir_resolved.rmdir()
