@@ -252,11 +252,11 @@ class S3FileSystemEx(S3FileSystem):
 class S3(FSSpec, UFS):
   ''' FSSpec's S3 has some quirks we'll want to deal with
   '''
-  def __init__(self, access_key, secret_access_key, endpoint_url='https://s3.amazonaws.com', _dirs={}):
+  def __init__(self, access_key, secret_access_key, endpoint_url='https://s3.amazonaws.com'):
     self._access_key = access_key
     self._secret_access_key = secret_access_key
     self._endpoint_url = endpoint_url
-    self._dirs: dict[str, FileStat] = _dirs
+    self._dirs: dict[str, FileStat] = {}
 
     super().__init__(
       SimpleCacheFileSystemEx(
@@ -266,12 +266,11 @@ class S3(FSSpec, UFS):
     )
 
   @staticmethod
-  def from_dict(*, access_key, secret_access_key, endpoint_url, _dirs):
+  def from_dict(*, access_key, secret_access_key, endpoint_url):
     return S3(
       access_key=access_key,
       secret_access_key=secret_access_key,
       endpoint_url=endpoint_url,
-      _dirs=_dirs,
     )
 
   def to_dict(self):
@@ -279,7 +278,6 @@ class S3(FSSpec, UFS):
       access_key=self._access_key,
       secret_access_key=self._secret_access_key,
       endpoint_url=self._endpoint_url,
-      _dirs=self._dirs,
     )
 
   def open(self, path: str, mode: t.Literal['rb', 'wb', 'ab', 'rb+', 'ab+']) -> int:
