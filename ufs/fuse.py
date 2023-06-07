@@ -137,10 +137,11 @@ def fuse_mount(ufs: UFS, mount_dir: str = None):
   import multiprocessing as mp
   from ufs.utils.process import active_process
   from ufs.utils.polling import wait_for, safe_predicate
+  mp_spawn = mp.get_context('spawn')
   mount_dir = mount_dir or tempfile.mkdtemp()
   ufs_spec = ufs.to_dict()
   try:
-    with active_process(mp.Process(target=fuse, args=(ufs_spec, mount_dir)), terminate_signal=signal.SIGINT):
+    with active_process(mp_spawn.Process(target=fuse, args=(ufs_spec, mount_dir)), terminate_signal=signal.SIGINT):
       mount_dir = pathlib.Path(mount_dir)
       wait_for(functools.partial(safe_predicate, mount_dir.is_mount))
       yield mount_dir

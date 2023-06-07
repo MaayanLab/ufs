@@ -20,15 +20,17 @@ import multiprocessing as mp
 from subprocess import Popen
 from queue import Queue, Empty
 
+mp_spawn = mp.get_context('spawn')
+
 class ProcessExitException(Exception):
   def __init__(self, exitcode) -> None:
     super().__init__(f"Process exited with code {exitcode}")
     self.exitcode = exitcode
 
 def process_thread(queue: Queue):
-  proc: mp.Process | Popen = queue.get()
+  proc: mp.Process | mp_spawn.Process | Popen = queue.get()
   try:
-    if isinstance(proc, mp.Process):
+    if isinstance(proc, mp.Process) or isinstance(proc, mp_spawn.Process):
       proc.start()
       proc.join()
       exc = ProcessExitException(proc.exitcode)
@@ -45,7 +47,7 @@ def process_thread(queue: Queue):
     _t.interrupt_main()
 
 @contextlib.contextmanager
-def active_process(proc: mp.Process | Popen, *, terminate_signal=signal.SIGTERM):
+def active_process(proc: mp.Process | mp_spawn.Process | Popen, *, terminate_signal=signal.SIGTERM):
   queue = Queue()
   thread = t.Thread(
     target=process_thread,
@@ -62,7 +64,7 @@ def active_process(proc: mp.Process | Popen, *, terminate_signal=signal.SIGTERM)
       raise KeyboardInterrupt
   finally:
     queue.put(None)
-    if isinstance(proc, mp.Process):
+    if isinstance(proc, mp.Process) or isinstance(proc, mp_spawn.Process):
       if proc.is_alive():
         os.kill(proc.pid, terminate_signal)
     elif isinstance(proc, Popen):

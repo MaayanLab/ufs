@@ -5,7 +5,9 @@ import typing as t
 import multiprocessing as mp
 from ufs.spec import UFS
 
-def ufs_proc(send: mp.Queue, recv: mp.Queue, ufs_spec):
+mp_spawn = mp.get_context('spawn')
+
+def ufs_proc(send: mp_spawn.Queue, recv: mp_spawn.Queue, ufs_spec):
   ufs = UFS.from_dict(**ufs_spec)
   while True:
     msg = recv.get()
@@ -83,8 +85,8 @@ class Process(UFS):
 
   def start(self):
     if not hasattr(self, '_proc'):
-      self._send, self._recv = mp.Queue(), mp.Queue()
-      self._proc = mp.Process(target=ufs_proc, args=(self._recv, self._send, self._ufs.to_dict()))
+      self._send, self._recv = mp_spawn.Queue(), mp_spawn.Queue()
+      self._proc = mp_spawn.Process(target=ufs_proc, args=(self._recv, self._send, self._ufs.to_dict()))
       self._proc.start()
       self._forward('start')
 
