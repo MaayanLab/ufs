@@ -14,12 +14,15 @@ class UFS:
   '''
   @staticmethod
   def from_dict(*, cls, **kwargs):
-    cls = { c.__name__: c for c in UFS.__subclasses__()}[cls]
+    import importlib
+    mod, _, name = cls.rpartition('.')
+    cls = getattr(importlib.import_module(mod), name)
     if cls.from_dict is UFS.from_dict: return cls(**kwargs)
     else: return cls.from_dict(**kwargs)
 
   def to_dict(self):
-    return dict(cls=self.__class__.__name__)
+    cls = self.__class__
+    return dict(cls=f"{cls.__module__}.{cls.__name__}")
 
   # essential
   def ls(self, path: str) -> list[str]:
