@@ -59,7 +59,7 @@ class Writecache(UFS):
       fr = self._ufs.open(path, 'rb')
       fd = next(self._cfd)
       fw = self._cache.open(f"/{fd}", mode='wb+')
-      while buf := self._ufs.read(fr, 5*1024):
+      while buf := self._ufs.read(fr, self.CHUNK_SIZE):
         self._cache.write(fw, buf)
       self._ufs.close(fr)
       if 'r' in mode: self._cache.seek(fw, 0)
@@ -88,7 +88,7 @@ class Writecache(UFS):
     if ufs is self._cache:
       fw = self._ufs.open(path, 'wb')
       self._cache.seek(fh, 0)
-      while buf := self._cache.read(fh, 5*1024):
+      while buf := self._cache.read(fh, self.CHUNK_SIZE):
         self._ufs.write(fw, buf)
       self._cache.close(fh)
       self._cache.unlink(f"/{fd}")

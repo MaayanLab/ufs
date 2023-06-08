@@ -12,6 +12,8 @@ class FileStat(t.TypedDict):
 class UFS:
   ''' A generic class interface for universal file system implementations
   '''
+  CHUNK_SIZE = 5*1024
+
   @staticmethod
   def from_dict(*, cls, **kwargs):
     import importlib
@@ -60,7 +62,7 @@ class UFS:
   def copy(self, src: str, dst: str):
     src_fd = self.open(src, 'rb')
     dst_fd = self.open(dst, 'wb')
-    while buf := self.read(src_fd, 5*1024):
+    while buf := self.read(src_fd, self.CHUNK_SIZE):
       self.write(dst_fd, buf)
     self.close(dst)
     self.close(src)
