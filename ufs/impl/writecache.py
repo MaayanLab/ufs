@@ -104,8 +104,8 @@ class Writecache(UFS):
   def rmdir(self, path: str):
     return self._ufs.rmdir(path)
   def flush(self, fd: int):
-    ufs, fd_, _ = self._fds[fd]
-    return ufs.flush(fd_)
+    ufs, fh, _ = self._fds[fd]
+    return ufs.flush(fh)
 
   def copy(self, src: str, dst: str):
     return self._ufs.copy(src, dst)
