@@ -2,11 +2,20 @@ import pathlib
 import typing as t
 
 class SafePurePosixPath_:
-  def __init__(self, path: 'PathLike' = pathlib.PurePosixPath('/')):
+  def __init__(self, path: str | pathlib.PurePosixPath = pathlib.PurePosixPath('/')):
     self._path = path
+  def __reduce__(self):
+    return (self.__class__, (self._path,),)
+  def __hash__(self):
+    return hash(self._path)
+  def __eq__(self, other):
+    return hash(self) == hash(other)
+  @property
+  def parent(self):
+    return SafePurePosixPath_(self._path.parent)
   def __truediv__(self, subpath: 'PathLike'):
     p = self._path
-    sp = pathlib.PurePosixPath(subpath)
+    sp = subpath if isinstance(subpath, pathlib.PurePosixPath) or isinstance(subpath, SafePurePosixPath_) else pathlib.PurePosixPath(str(subpath))
     for part in sp.parts:
       if part == '..': p = p.parent
       elif part in ['/', '.', '']: pass
