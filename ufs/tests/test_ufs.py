@@ -6,6 +6,7 @@ from ufs.pathlib import UPath
   'local',
   'memory',
   'process-memory',
+  'local-memory-writecache',
   'fsspec-local',
   'fsspec-memory',
   'dircache-local',
@@ -20,6 +21,13 @@ def ufs(request):
     from ufs.impl.local import Local
     with tempfile.TemporaryDirectory() as tmp:
       yield Prefix(Local(), tmp+'/')
+  if request.param == 'local-memory-writecache':
+    import tempfile
+    from ufs.impl.local import Local
+    from ufs.impl.memory import Memory
+    from ufs.impl.writecache import Writecache
+    with tempfile.TemporaryDirectory() as tmp:
+      yield Prefix(Writecache(Local(), Memory()), tmp+'/')
   elif request.param == 'memory':
     from ufs.impl.memory import Memory
     yield Prefix(Memory())
