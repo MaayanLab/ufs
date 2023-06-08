@@ -4,6 +4,7 @@ import os
 import stat
 import shutil
 import itertools
+import typing as t
 from ufs.spec import UFS, FileStat
 
 class Local(UFS):
@@ -32,8 +33,8 @@ class Local(UFS):
     fd = next(self._cfd)
     self._fds[fd] = open(path, mode)
     return fd
-  def seek(self, fd: int, pos: int, how: int):
-    return self._fds[fd].seek(pos, how)
+  def seek(self, fd: int, pos: int, whence: t.Literal[0, 1, 2] = 0):
+    return self._fds[fd].seek(pos, whence)
   def read(self, fd: int, amnt: int = -1) -> bytes:
     return self._fds[fd].read(amnt)
   def write(self, fd: int, data: bytes) -> int:
