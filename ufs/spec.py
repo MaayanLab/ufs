@@ -58,8 +58,8 @@ class UFS:
 
   # fallback
   def copy(self, src: str, dst: str):
-    src_fd = self.open(src, 'r')
-    dst_fd = self.open(dst, 'w')
+    src_fd = self.open(src, 'rb')
+    dst_fd = self.open(dst, 'wb')
     while buf := self.read(src_fd, 5*1024):
       self.write(dst_fd, buf)
     self.close(dst)
