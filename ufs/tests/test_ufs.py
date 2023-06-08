@@ -1,6 +1,7 @@
 import pytest
 from ufs.spec import UFS
 from ufs.pathlib import UPath
+from ufs.utils.pathlib import SafePurePosixPath
 
 @pytest.fixture(params=[
   'local',
@@ -20,14 +21,14 @@ def ufs(request):
     import tempfile
     from ufs.impl.local import Local
     with tempfile.TemporaryDirectory() as tmp:
-      yield Prefix(Local(), tmp+'/')
+      yield Prefix(Local(), tmp)
   if request.param == 'local-memory-writecache':
     import tempfile
     from ufs.impl.local import Local
     from ufs.impl.memory import Memory
     from ufs.impl.writecache import Writecache
     with tempfile.TemporaryDirectory() as tmp:
-      yield Prefix(Writecache(Local(), Memory()), tmp+'/')
+      yield Prefix(Writecache(Local(), Memory()), tmp)
   elif request.param == 'memory':
     from ufs.impl.memory import Memory
     yield Prefix(Memory())
@@ -43,7 +44,7 @@ def ufs(request):
     from ufs.impl.fsspec import FSSpec
     from fsspec.implementations.local import LocalFileSystem
     with tempfile.TemporaryDirectory() as tmp:
-      yield Prefix(FSSpec(LocalFileSystem()), tmp+'/')
+      yield Prefix(FSSpec(LocalFileSystem()), tmp)
   elif request.param == 'fsspec-memory':
     from ufs.impl.fsspec import FSSpec
     from fsspec.implementations.memory import MemoryFileSystem
@@ -53,7 +54,7 @@ def ufs(request):
     from ufs.impl.local import Local
     from ufs.impl.dircache import DirCache
     with tempfile.TemporaryDirectory() as tmp:
-      yield Prefix(DirCache(Local()), tmp+'/')
+      yield Prefix(DirCache(Local()), tmp)
   elif request.param == 's3':
     import shutil
     # look for the minio command for running an s3 server
@@ -99,7 +100,7 @@ def ufs(request):
               secret_access_key=MINIO_ROOT_PASSWORD,
               endpoint_url=f"http://{host}:{port}",
             ),
-            f"/test/",
+            '/test',
           )
           ufs.mkdir('/')
           yield ufs
@@ -131,7 +132,7 @@ def test_map(ufs: UFS):
   'fuse',
 ])
 def path(request, ufs):
-  ufs.info('/')
+  ufs.info(SafePurePosixPath('/'))
   if request.param == 'pathlib':
     upath = UPath(ufs) / 'pathlib'
     upath.mkdir()

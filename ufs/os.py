@@ -6,6 +6,7 @@ import time
 import typing as t
 import logging
 from ufs.spec import UFS
+from ufs.utils.pathlib import SafePurePosixPath
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ class UOS:
     effective_ids: bool = False,
     follow_symlinks: bool = True
   ) -> bool:
-    try: self._ufs.info(path)
+    try: self._ufs.info(SafePurePosixPath(path))
     except FileNotFoundError: return False
     except IsADirectoryError: return True
     except PermissionError: return False
@@ -75,7 +76,7 @@ class UOS:
     # elif flags & os.O_RDONLY: mode = 'rb'
     else: mode = 'rb'
     logger.debug(f"open({path=}, {mode=}) {flags=}")
-    return self._ufs.open(path, mode)
+    return self._ufs.open(SafePurePosixPath(path), mode)
 
   def fsync(
     self,
@@ -95,8 +96,8 @@ class UOS:
     *,
     dir_fd: int | None = None
   ) -> os.stat_result:
-    info = self._ufs.info(path)
-    nlink = 2 + len(self._ufs.ls(path)) if info['type'] == 'directory' else 1
+    info = self._ufs.info(SafePurePosixPath(path))
+    nlink = 2 + len(self._ufs.ls(SafePurePosixPath(path))) if info['type'] == 'directory' else 1
     return os.stat_result([
       (stat.S_IFREG | 0o644 if info['type'] == 'file' else stat.S_IFDIR | 0o755),#st_mode
       0,#st_ino
@@ -128,7 +129,7 @@ class UOS:
     *,
     dir_fd: int | None = None
   ) -> None:
-    self._ufs.mkdir(path)
+    self._ufs.mkdir(SafePurePosixPath(path))
 
   def mknod(
     self,
@@ -154,7 +155,7 @@ class UOS:
     *,
     dir_fd: int | None = None
   ) -> None:
-    self._ufs.rmdir(path)
+    self._ufs.rmdir(SafePurePosixPath(path))
   
   def unlink(
     self,
@@ -162,7 +163,7 @@ class UOS:
     *,
     dir_fd: int | None = None
   ) -> None:
-    self._ufs.unlink(path)
+    self._ufs.unlink(SafePurePosixPath(path))
 
   def utime(
     self,
@@ -196,7 +197,7 @@ class UOS:
     self,
     path: StrPath | None = None
   ) -> list[str]:
-    return self._ufs.ls(path)
+    return self._ufs.ls(SafePurePosixPath(path))
   
   def close(
     self,
@@ -212,7 +213,7 @@ class UOS:
     src_dir_fd: int | None = None,
     dst_dir_fd: int | None = None
   ) -> None:
-    self._ufs.rename(src, dst)
+    self._ufs.rename(SafePurePosixPath(src), SafePurePosixPath(dst))
   
   def statvfs(
     self,
@@ -243,6 +244,6 @@ class UOS:
     path: FileDescriptorOrPath,
     length: int
   ) -> None:
-    fd = self._ufs.open(path, 'r+')
+    fd = self._ufs.open(SafePurePosixPath(path), 'r+')
     self._ufs.truncate(fd, length)
     self._ufs.close(fd)

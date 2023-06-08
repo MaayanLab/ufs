@@ -30,50 +30,50 @@ class UPath:
 
   def exists(self):
     try:
-      self._ufs.info(str(self._path))
+      self._ufs.info(self._path)
       return True
     except FileNotFoundError:
       return False
 
   def is_file(self):
     try:
-      return self._ufs.info(str(self._path))['type'] == 'file'
+      return self._ufs.info(self._path)['type'] == 'file'
     except FileNotFoundError:
       return False
 
   def is_dir(self):
     try:
-      return self._ufs.info(str(self._path))['type'] == 'directory'
+      return self._ufs.info(self._path)['type'] == 'directory'
     except FileNotFoundError:
       return False
 
   def open(self, mode: str):
-    if 'b' in mode: return UPathBinaryOpener(self._ufs, str(self._path), mode)
-    else: return UPathOpener(self._ufs, str(self._path), mode)
+    if 'b' in mode: return UPathBinaryOpener(self._ufs, self._path, mode)
+    else: return UPathOpener(self._ufs, self._path, mode)
 
   def unlink(self):
-    self._ufs.unlink(str(self._path))
+    self._ufs.unlink(self._path)
 
   def mkdir(self, parents=False, exist_ok=False):
     try:
       if parents:
         if not self.parent.exists():
           self.parent.mkdir(parents=True)
-      self._ufs.mkdir(str(self._path))
+      self._ufs.mkdir(self._path)
     except FileExistsError as e:
       if not exist_ok: raise e
 
   def rmdir(self):
-    self._ufs.rmdir(str(self._path))
+    self._ufs.rmdir(self._path)
 
   def rename(self, other: str):
     if str(other).startswith('/'):
-      self._ufs.rename(str(self._path), str(other))
+      self._ufs.rename(self._path, SafePurePosixPath(other))
     else:
-      self._ufs.rename(str(self._path), str(self._path.parent/str(other)))
+      self._ufs.rename(self._path, self._path.parent/other)
 
   def iterdir(self):
-    for name in self._ufs.ls(str(self._path)):
+    for name in self._ufs.ls(self._path):
       yield self / name
   
   def read_text(self):
@@ -93,7 +93,7 @@ class UPath:
       fw.write(text)
 
 class UPathBinaryOpener:
-  def __init__(self, ufs: UFS, path: str, mode: str):
+  def __init__(self, ufs: UFS, path: SafePurePosixPath_, mode: str):
     self._ufs = ufs
     self._path = path
     self._mode = mode
@@ -117,7 +117,7 @@ class UPathBinaryOpener:
     return self._ufs.write(self._fd, data)
 
 class UPathOpener(UPathBinaryOpener):
-  def __init__(self, ufs: UFS, path: str, mode: str):
+  def __init__(self, ufs: UFS, path: SafePurePosixPath_, mode: str):
     if mode.endswith('+'): mode_ = mode[:-1] + 'b+'
     else: mode_ = mode + 'b'
     super().__init__(ufs, path, mode_)

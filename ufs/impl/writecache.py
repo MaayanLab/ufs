@@ -7,10 +7,9 @@ In this case, we will temporarily write to memory until the write is complete th
 to the underlying ufs. This is useful when your UFS doesn't support seeks.
 '''
 
-import typing as t
 import itertools
-from ufs.spec import UFS, FileStat
-from ufs.utils.pathlib import pathparent, pathname
+from ufs.spec import UFS
+from ufs.utils.pathlib import SafePurePosixPath
 
 class Writecache(UFS):
   def __init__(self, ufs: UFS, cache: UFS):
@@ -33,23 +32,23 @@ class Writecache(UFS):
       cache=self._cache.to_dict(),
     )
 
-  def ls(self, path: str) -> list[str]:
+  def ls(self, path):
     return list({
       *self._ufs.ls(path),
       *[
-        pathname(p)
+        p.name
         for ufs, _, p in self._fds.values()
-        if ufs is self._cache and pathparent(p) == path
+        if ufs is self._cache and p.parent == path
       ],
     })
 
-  def info(self, path: str) -> FileStat:
+  def info(self, path):
     for fd, (ufs, _, p) in self._fds.items():
       if ufs is self._cache and p == path:
-        return self._cache.info(f"/{fd}")
+        return self._cache.info(SafePurePosixPath(f"/{fd}"))
     return self._ufs.info(path)
 
-  def open(self, path: str, mode: t.Literal['rb', 'wb', 'ab', 'rb+', 'ab+']) -> int:
+  def open(self, path, mode):
     if 'r' in mode and '+' not in mode:
       fr = self._ufs.open(path, mode)
       fd = next(self._cfd)
@@ -58,7 +57,7 @@ class Writecache(UFS):
     elif 'r' in mode or 'a' in mode:
       fr = self._ufs.open(path, 'rb')
       fd = next(self._cfd)
-      fw = self._cache.open(f"/{fd}", mode='wb+')
+      fw = self._cache.open(SafePurePosixPath(f"/{fd}"), mode='wb+')
       while buf := self._ufs.read(fr, self.CHUNK_SIZE):
         self._cache.write(fw, buf)
       self._ufs.close(fr)
@@ -67,23 +66,23 @@ class Writecache(UFS):
       return fd
     else:
       fd = next(self._cfd)
-      fw = self._cache.open(f"/{fd}", mode='wb+')
+      fw = self._cache.open(SafePurePosixPath(f"/{fd}"), mode='wb+')
       self._fds[fd] = (self._cache, fw, path)
       return fd
   
-  def seek(self, fd: int, pos: int, whence: t.Literal[0, 1, 2] = 0):
+  def seek(self, fd, pos, whence = 0):
     ufs, fh, _ = self._fds[fd]
     return ufs.seek(fh, pos, whence)
-  def read(self, fd: int, amnt: int) -> bytes:
+  def read(self, fd, amnt):
     ufs, fh, _ = self._fds[fd]
     return ufs.read(fh, amnt)
-  def write(self, fd: int, data: bytes) -> int:
+  def write(self, fd, data):
     ufs, fh, _ = self._fds[fd]
     return ufs.write(fh, data)
-  def truncate(self, fd: int, length: int):
+  def truncate(self, fd, length):
     ufs, fh, _ = self._fds[fd]
     return ufs.truncate(fh, length)
-  def close(self, fd: int):
+  def close(self, fd):
     ufs, fh, path = self._fds.pop(fd)
     if ufs is self._cache:
       fw = self._ufs.open(path, 'wb')
@@ -91,26 +90,26 @@ class Writecache(UFS):
       while buf := self._cache.read(fh, self.CHUNK_SIZE):
         self._ufs.write(fw, buf)
       self._cache.close(fh)
-      self._cache.unlink(f"/{fd}")
+      self._cache.unlink(SafePurePosixPath(f"/{fd}"))
       return self._ufs.close(fw)
     else:
       return self._ufs.close(fh)
 
-  def unlink(self, path: str):
+  def unlink(self, path):
     self._ufs.unlink(path)
 
-  def mkdir(self, path: str):
+  def mkdir(self, path):
     return self._ufs.mkdir(path)
-  def rmdir(self, path: str):
+  def rmdir(self, path):
     return self._ufs.rmdir(path)
-  def flush(self, fd: int):
+  def flush(self, fd):
     ufs, fh, _ = self._fds[fd]
     return ufs.flush(fh)
 
-  def copy(self, src: str, dst: str):
+  def copy(self, src, dst):
     return self._ufs.copy(src, dst)
 
-  def rename(self, src: str, dst: str):
+  def rename(self, src, dst):
     return self._ufs.rename(src, dst)
 
   def start(self):

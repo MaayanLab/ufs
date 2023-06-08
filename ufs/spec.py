@@ -1,6 +1,10 @@
 ''' The UFS generic interface for universal filesystem implementation
 '''
 import typing as t
+from ufs.utils.pathlib import SafePurePosixPath_
+
+FileOpenMode: t.TypeAlias = t.Literal['rb', 'wb', 'ab', 'rb+', 'ab+']
+FileSeekWhence: t.TypeAlias = t.Literal[0, 1, 2]
 
 class FileStat(t.TypedDict):
   type: t.Literal['file', 'directory']
@@ -22,18 +26,18 @@ class UFS:
     if cls.from_dict is UFS.from_dict: return cls(**kwargs)
     else: return cls.from_dict(**kwargs)
 
-  def to_dict(self):
+  def to_dict(self) -> dict[str, t.Any]:
     cls = self.__class__
     return dict(cls=f"{cls.__module__}.{cls.__name__}")
 
   # essential
-  def ls(self, path: str) -> list[str]:
+  def ls(self, path: SafePurePosixPath_) -> list[str]:
     raise NotImplementedError()
-  def info(self, path: str) -> FileStat:
+  def info(self, path: SafePurePosixPath_) -> FileStat:
     raise NotImplementedError()
-  def open(self, path: str, mode: t.Literal['rb', 'wb', 'ab', 'rb+', 'ab+']) -> int:
+  def open(self, path: SafePurePosixPath_, mode: FileOpenMode) -> int:
     raise NotImplementedError()
-  def seek(self, fd: int, pos: int, whence: t.Literal[0, 1, 2] = 0):
+  def seek(self, fd: int, pos: int, whence: FileSeekWhence = 0):
     raise NotImplementedError()
   def read(self, fd: int, amnt: int) -> bytes:
     raise NotImplementedError()
@@ -43,13 +47,13 @@ class UFS:
     raise NotImplementedError()
   def close(self, fd: int):
     raise NotImplementedError()
-  def unlink(self, path: str):
+  def unlink(self, path: SafePurePosixPath_):
     raise NotImplementedError()
 
   # optional
-  def mkdir(self, path: str):
+  def mkdir(self, path: SafePurePosixPath_):
     pass
-  def rmdir(self, path: str):
+  def rmdir(self, path: SafePurePosixPath_):
     pass
   def flush(self, fd: int):
     pass
@@ -59,7 +63,7 @@ class UFS:
     pass
 
   # fallback
-  def copy(self, src: str, dst: str):
+  def copy(self, src: SafePurePosixPath_, dst: SafePurePosixPath_):
     src_fd = self.open(src, 'rb')
     dst_fd = self.open(dst, 'wb')
     while buf := self.read(src_fd, self.CHUNK_SIZE):
@@ -67,7 +71,7 @@ class UFS:
     self.close(dst)
     self.close(src)
 
-  def rename(self, src: str, dst: str):
+  def rename(self, src: SafePurePosixPath_, dst: SafePurePosixPath_):
     self.copy(src, dst)
     self.unlink(src)
 

@@ -7,13 +7,12 @@ ufs = FSSpec(LocalFileSystem())
 import time
 import json
 import fsspec
-import typing as t
 import itertools
 import functools
 from ufs.utils.cache import TTLCache
-from ufs.utils.pathlib import pathparent, pathname
+from ufs.utils.pathlib import pathname, pathparent
 from datetime import datetime
-from ufs.spec import UFS, FileStat
+from ufs.spec import UFS
 
 def fsspec_info_to_ufs_info(info):
   atime = info.get('atime', time.time())
@@ -37,6 +36,7 @@ def fsspec_ls(fs, path: str):
     for item in detail
     if pathparent(item['name']) == path
   }
+  import sys; print(path, detail, fs, file=sys.stderr)
   return ret
 
 def fsspec_info(fs, path: str):
@@ -65,74 +65,71 @@ class FSSpec(UFS):
       ttl=self._ttl,
     )
 
-  def _path(self, path: str):
-    return self._fs.root_marker + path[1:].rstrip('/')
+  def _path(self, path) -> str:
+    return self._fs.root_marker + str(path)[1:]
 
-  def _ppath(self, path: str):
-    return self._path(pathparent(path))
-
-  def ls(self, path: str) -> list[str]:
+  def ls(self, path):
     listing = self._ls_cache(self._path(path))
     for p, info in listing.items():
       self._info_cache[p] = info
     return list(listing.keys())
 
-  def info(self, path: str) -> FileStat:
+  def info(self, path):
     info = self._info_cache(self._path(path))
     if info is None: raise FileNotFoundError(path)
     return info
 
-  def open(self, path: str, mode: t.Literal['rb', 'wb', 'ab', 'rb+', 'ab+']) -> int:
+  def open(self, path, mode):
     fd = next(self._cfd)
     self._info_cache.discard(self._path(path))
-    self._ls_cache.discard(self._ppath(path))
+    self._ls_cache.discard(self._path(path.parent))
     self._fds[fd] = (
       path,
       self._fs.open(self._path(path), mode),
     )
     return fd
-  def seek(self, fd: int, pos: int, whence: t.Literal[0, 1, 2] = 0):
+  def seek(self, fd, pos, whence = 0):
     return self._fds[fd][1].seek(pos, whence)
-  def read(self, fd: int, amnt: int) -> bytes:
+  def read(self, fd, amnt):
     return self._fds[fd][1].read(amnt)
-  def write(self, fd: int, data: bytes) -> int:
+  def write(self, fd, data):
     return self._fds[fd][1].write(data)
-  def truncate(self, fd: int, length: int):
+  def truncate(self, fd, length):
     return self._fds[fd][1].truncate(length)
-  def close(self, fd: int):
+  def close(self, fd):
     path, fh = self._fds.pop(fd)
     self._info_cache.discard(self._path(path))
-    self._ls_cache.discard(self._ppath(path))
+    self._ls_cache.discard(self._path(path.parent))
     return fh.close()
-  def unlink(self, path: str):
+  def unlink(self, path):
     self._info_cache.discard(self._path(path))
-    self._ls_cache.discard(self._ppath(path))
+    self._ls_cache.discard(self._path(path.parent))
     self._fs.rm_file(self._path(path))
 
   # optional
-  def mkdir(self, path: str):
+  def mkdir(self, path):
     self._info_cache.discard(self._path(path))
     self._ls_cache.discard(self._path(path))
-    self._ls_cache.discard(self._ppath(path))
+    self._ls_cache.discard(self._path(path.parent))
     return self._fs.mkdir(self._path(path))
-  def rmdir(self, path: str):
+  def rmdir(self, path):
     self._info_cache.discard(self._path(path))
     self._ls_cache.discard(self._path(path))
-    self._ls_cache.discard(self._ppath(path))
+    self._ls_cache.discard(self._path(path.parent))
     return self._fs.rmdir(self._path(path))
-  def flush(self, fd: int):
+  def flush(self, fd):
     self._fds[fd][1].flush()
 
-  def copy(self, src: str, dst: str):
+  def copy(self, src, dst):
     self._fs.copy(self._path(src), self._path(dst))
     self._info_cache.discard(self._path(dst))
-    self._ls_cache.discard(self._ppath(dst))
+    self._ls_cache.discard(self._path(dst.parent))
 
-  def rename(self, src: str, dst: str):
+  def rename(self, src, dst):
     self._info_cache.discard(self._path(src))
-    self._ls_cache.discard(self._ppath(src))
+    self._ls_cache.discard(self._path(src.parent))
     self._info_cache.discard(self._path(dst))
-    self._ls_cache.discard(self._ppath(dst))
+    self._ls_cache.discard(self._path(dst.parent))
     if hasattr(self._fs, 'rename'):
       return self._fs.rename(self._path(src), self._path(dst))
     else:

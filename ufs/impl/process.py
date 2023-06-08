@@ -41,46 +41,46 @@ class Process(UFS):
     if err is not None: raise err
     else: return ret
 
-  def ls(self, path: str) -> list[str]:
+  def ls(self, path):
     return self._forward('ls', path)
 
-  def info(self, path: str) -> list[str]:
+  def info(self, path):
     return self._forward('info', path)
 
-  def open(self, path: str, mode: t.Literal['rb', 'wb', 'ab', 'rb+', 'ab+']) -> int:
+  def open(self, path, mode):
     return self._forward('open', path, mode)
 
-  def seek(self, fd: int, pos: int, whence: t.Literal[0, 1, 2] = 0):
+  def seek(self, fd, pos, whence = 0):
     return self._forward('seek', fd, pos, whence)
 
-  def read(self, fd: int, amnt: int) -> bytes:
+  def read(self, fd, amnt):
     return self._forward('read', fd, amnt)
 
-  def write(self, fd: int, data: bytes) -> int:
+  def write(self, fd, data: bytes):
     return self._forward('write', fd, data)
 
-  def truncate(self, fd: int, length: int):
+  def truncate(self, fd, length):
     return self._forward('truncate', fd, length)
 
-  def close(self, fd: int):
+  def close(self, fd):
     return self._forward('close', fd)
 
-  def unlink(self, path: str):
+  def unlink(self, path):
     return self._forward('unlink', path)
 
   # optional
-  def mkdir(self, path: str):
+  def mkdir(self, path):
     return self._forward('mkdir', path)
-  def rmdir(self, path: str):
+  def rmdir(self, path):
     return self._forward('rmdir', path)
-  def flush(self, fd: int):
+  def flush(self, fd):
     return self._forward('flush', fd)
 
   # fallback
-  def copy(self, src: str, dst: str):
+  def copy(self, src, dst):
     return self._forward('copy', src, dst)
 
-  def rename(self, src: str, dst: str):
+  def rename(self, src, dst):
     return self._forward('rename', src, dst)
 
   def start(self):

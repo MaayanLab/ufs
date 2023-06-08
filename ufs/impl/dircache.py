@@ -2,9 +2,7 @@
 these operations are expensive such as with remote stores.
 '''
 
-import typing as t
-from ufs.spec import UFS, FileStat
-from ufs.utils.pathlib import pathparent
+from ufs.spec import UFS
 from ufs.utils.cache import TTLCache
 
 class DirCache(UFS):
@@ -23,64 +21,64 @@ class DirCache(UFS):
   def to_dict(self):
     return dict(super().to_dict(), ufs=self._ufs.to_dict(), ttl=self._ttl)
 
-  def ls(self, path: str) -> list[str]:
+  def ls(self, path):
     return self._ls_cache(path)
 
-  def info(self, path: str) -> FileStat:
+  def info(self, path):
     return self._info_cache(path)
 
-  def open(self, path: str, mode: t.Literal['rb', 'wb', 'ab', 'rb+', 'ab+']) -> int:
+  def open(self, path, mode):
     self._info_cache.discard(path)
-    self._ls_cache.discard(pathparent(path))
+    self._ls_cache.discard(path.parent)
     fd = self._ufs.open(path, mode)
     self._fds[fd] = path
     return fd
-  def seek(self, fd: int, pos: int, whence: t.Literal[0, 1, 2] = 0):
+  def seek(self, fd, pos, whence = 0):
     return self._ufs.seek(fd, pos, whence)
-  def read(self, fd: int, amnt: int = -1) -> bytes:
+  def read(self, fd, amnt = -1):
     return self._ufs.read(fd, amnt)
-  def write(self, fd: int, data: bytes) -> int:
+  def write(self, fd, data: bytes):
     return self._ufs.write(fd, data)
-  def truncate(self, fd: int, length: int):
+  def truncate(self, fd, length):
     return self._ufs.truncate(fd, length)
-  def close(self, fd: int):
+  def close(self, fd):
     path = self._fds.pop(fd)
     self._info_cache.discard(path)
-    self._ls_cache.discard(pathparent(path))
+    self._ls_cache.discard(path.parent)
     return self._ufs.close(fd)
-  def unlink(self, path: str):
+  def unlink(self, path):
     self._info_cache.discard(path)
-    self._ls_cache.discard(pathparent(path))
+    self._ls_cache.discard(path.parent)
     return self._ufs.unlink(path)
 
   # optional
-  def mkdir(self, path: str):
+  def mkdir(self, path):
     self._info_cache.discard(path)
     self._ls_cache.discard(path)
-    self._ls_cache.discard(pathparent(path))
+    self._ls_cache.discard(path.parent)
     return self._ufs.mkdir(path)
 
-  def rmdir(self, path: str):
+  def rmdir(self, path):
     self._info_cache.discard(path)
     self._ls_cache.discard(path)
-    self._ls_cache.discard(pathparent(path))
+    self._ls_cache.discard(path.parent)
     return self._ufs.rmdir(path)
 
-  def flush(self, fd: int):
+  def flush(self, fd):
     return self._ufs.flush(fd)
 
   # fallback
-  def copy(self, src: str, dst: str):
+  def copy(self, src, dst):
     self._ufs.copy(src, dst)
     self._info_cache.discard(dst)
-    self._ls_cache.discard(pathparent(dst))
+    self._ls_cache.discard(dst.parent)
 
-  def rename(self, src: str, dst: str):
+  def rename(self, src, dst):
     self._ufs.rename(src, dst)
     self._info_cache.discard(src)
-    self._ls_cache.discard(pathparent(src))
+    self._ls_cache.discard(src.parent)
     self._info_cache.discard(dst)
-    self._ls_cache.discard(pathparent(dst))
+    self._ls_cache.discard(dst.parent)
 
   def start(self):
     self._ufs.start()

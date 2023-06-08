@@ -6,9 +6,8 @@ ufs = Logger(UFS())
 '''
 
 import logging
-import typing as t
 import traceback
-from ufs.spec import UFS, FileStat
+from ufs.spec import UFS
 
 logger = logging.getLogger(__name__)
 
@@ -40,39 +39,39 @@ class Logger(UFS):
       self._logger.error(f"{method} raised {traceback.format_exc()}")
       raise e
 
-  def ls(self, path: str) -> list[str]:
+  def ls(self, path):
     return self._call('ls', path)
 
-  def info(self, path: str) -> FileStat:
+  def info(self, path):
     return self._call('info', path)
-  def open(self, path: str, mode: t.Literal['rb', 'wb', 'ab', 'rb+', 'ab+']) -> int:
+  def open(self, path, mode):
     return self._call('open', path, mode)
-  def seek(self, fd: int, pos: int, whence: t.Literal[0, 1, 2] = 0):
+  def seek(self, fd, pos, whence = 0):
     return self._call('seek', fd, pos, whence)
-  def read(self, fd: int, amnt: int) -> bytes:
+  def read(self, fd, amnt):
     return self._call('read', fd, amnt)
-  def write(self, fd: int, data: bytes) -> int:
+  def write(self, fd, data: bytes):
     return self._call('write', fd, data)
-  def truncate(self, fd: int, length: int):
+  def truncate(self, fd, length):
     return self._call('truncate', fd, length)
-  def close(self, fd: int):
+  def close(self, fd):
     return self._call('close', fd)
-  def unlink(self, path: str):
+  def unlink(self, path):
     return self._call('unlink', path)
 
   # optional
-  def mkdir(self, path: str):
+  def mkdir(self, path):
     return self._call('mkdir', path)
-  def rmdir(self, path: str):
+  def rmdir(self, path):
     return self._call('rmdir', path)
-  def flush(self, fd: int):
+  def flush(self, fd):
     return self._call('flush', fd)
 
   # fallback
-  def copy(self, src: str, dst: str):
+  def copy(self, src, dst):
     return self._call('copy', src, dst)
 
-  def rename(self, src: str, dst: str):
+  def rename(self, src, dst):
     return self._call('rename', src, dst)
 
   def start(self):

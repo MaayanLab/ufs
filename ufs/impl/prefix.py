@@ -8,17 +8,16 @@ ufs = Prefix(UFS(), '/some/subpath/')
 import os
 import errno
 import logging
-import typing as t
-from ufs.spec import UFS, FileStat
-from ufs.utils.pathlib import SafePosixPath
+from ufs.spec import UFS
+from ufs.utils.pathlib import SafePurePosixPath, PathLike
 
 logger = logging.getLogger(__name__)
 
 class Prefix(UFS):
-  def __init__(self, ufs: UFS, prefix: str = '/'):
+  def __init__(self, ufs: UFS, prefix: PathLike = '/'):
     super().__init__()
     self._ufs = ufs
-    self._prefix = prefix
+    self._prefix = SafePurePosixPath(prefix)
 
   @staticmethod
   def from_dict(*, ufs, prefix):
@@ -33,67 +32,63 @@ class Prefix(UFS):
       prefix=self._prefix,
     )
 
-  def _path(self, path: str):
-    if path in ['','/'] and self._prefix in ['','/']: return self._prefix
-    return (self._prefix + str(SafePosixPath(path))[1:]).rstrip('/')
-
-  def ls(self, path: str) -> list[str]:
+  def ls(self, path):
     try:
-      return self._ufs.ls(self._path(path))
+      return self._ufs.ls(self._prefix / path)
     except FileNotFoundError:
-      raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
-  def info(self, path: str) -> FileStat:
+      raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(path))
+  def info(self, path):
     try:
-      return self._ufs.info(self._path(path))
+      return self._ufs.info(self._prefix / path)
     except FileNotFoundError:
-      raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
-  def open(self, path: str, mode: t.Literal['rb', 'wb', 'ab', 'rb+', 'ab+']) -> int:
+      raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(path))
+  def open(self, path, mode):
     try:
-      return self._ufs.open(self._path(path), mode)
+      return self._ufs.open(self._prefix / path, mode)
     except FileNotFoundError:
-      raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
-  def seek(self, fd: int, pos: int, whence: t.Literal[0, 1, 2] = 0):
+      raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(path))
+  def seek(self, fd, pos, whence = 0):
     return self._ufs.seek(fd, pos, whence)
-  def read(self, fd: int, amnt: int) -> bytes:
+  def read(self, fd, amnt):
     return self._ufs.read(fd, amnt)
-  def write(self, fd: int, data: bytes) -> int:
+  def write(self, fd, data):
     return self._ufs.write(fd, data)
-  def truncate(self, fd: int, length: int):
+  def truncate(self, fd, length):
     return self._ufs.truncate(fd, length)
-  def close(self, fd: int):
+  def close(self, fd):
     return self._ufs.close(fd)
-  def unlink(self, path: str):
+  def unlink(self, path):
     try:
-      return self._ufs.unlink(self._path(path))
+      return self._ufs.unlink(self._prefix / path)
     except FileNotFoundError:
-      raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
+      raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(path))
 
   # optional
-  def mkdir(self, path: str):
+  def mkdir(self, path):
     try:
-      return self._ufs.mkdir(self._path(path))
+      return self._ufs.mkdir(self._prefix / path)
     except FileNotFoundError:
-      raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
-  def rmdir(self, path: str):
+      raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(path))
+  def rmdir(self, path):
     try:
-      return self._ufs.rmdir(self._path(path))
+      return self._ufs.rmdir(self._prefix / path)
     except FileNotFoundError:
-      raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
-  def flush(self, fd: int):
+      raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(path))
+  def flush(self, fd):
     return self._ufs.flush(fd)
 
   # fallback
-  def copy(self, src: str, dst: str):
+  def copy(self, src, dst):
     try:
-      return self._ufs.copy(self._path(src), self._path(dst))
+      return self._ufs.copy(self._prefix / src, self._prefix / dst)
     except FileNotFoundError as e:
-      raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), e.filename.replace(str(self._prefix), ''))
+      raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(SafePurePosixPath(e.filename).relative_to(self._prefix)))
 
-  def rename(self, src: str, dst: str):
+  def rename(self, src, dst):
     try:
-      return self._ufs.rename(self._path(src), self._path(dst))
+      return self._ufs.rename(self._prefix / src, self._prefix / dst)
     except FileNotFoundError as e:
-      raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), e.filename.replace(str(self._prefix), ''))
+      raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(SafePurePosixPath(e.filename).relative_to(self._prefix)))
 
   def start(self):
     self._ufs.start()

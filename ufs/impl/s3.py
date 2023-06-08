@@ -4,9 +4,8 @@ This is based off of s3fs from the fsspec ecosystem, but with several patches to
 '''
 
 import time
-import typing as t
 from ufs.spec import UFS, FileStat
-from ufs.pathlib import pathparent, pathname
+from ufs.utils.pathlib import SafePurePosixPath_
 from ufs.impl.fsspec import FSSpec
 from s3fs import S3FileSystem
 from fsspec.implementations.cached import SimpleCacheFileSystem
@@ -256,8 +255,8 @@ class S3(FSSpec, UFS):
     self._access_key = access_key
     self._secret_access_key = secret_access_key
     self._endpoint_url = endpoint_url
-    self._dirs: dict[str, FileStat] = {}
-    self._blankfiles: dict[str, FileStat] = {}
+    self._dirs: dict[SafePurePosixPath_, FileStat] = {}
+    self._blankfiles: dict[SafePurePosixPath_, FileStat] = {}
 
     super().__init__(
       SimpleCacheFileSystemEx(
@@ -281,7 +280,7 @@ class S3(FSSpec, UFS):
       endpoint_url=self._endpoint_url,
     )
 
-  def open(self, path: str, mode: t.Literal['rb', 'wb', 'ab', 'rb+', 'ab+']) -> int:
+  def open(self, path, mode):
     ''' s3fs doesn't seem to throw FileNotFound when opening non-existing files for reading.
     '''
     if 'r' in mode:
@@ -296,34 +295,34 @@ class S3(FSSpec, UFS):
       }
     return FSSpec.open(self, path, mode)
 
-  def write(self, fd: int, data: bytes) -> int:
+  def write(self, fd, data):
     ret = super().write(fd, data)
     path, _ = self._fds[fd]
     if path in self._blankfiles:
       self._blankfiles[path]['size'] += ret
     return ret
 
-  def close(self, fd: int):
+  def close(self, fd):
     path, _fh = self._fds[fd]
     FSSpec.close(self, fd)
     self._blankfiles.pop(path, None)
 
-  def ls(self, path: str) -> list[str]:
+  def ls(self, path):
     return (
       FSSpec.ls(self, path)
-      + [pathname(p) for p in self._dirs if pathparent(p) == path]
-      + [pathname(p) for p in self._blankfiles if pathparent(p) == path]
+      + [p.name for p in self._dirs if p.parent == path]
+      + [p.name for p in self._blankfiles if p.parent == path]
     )
 
-  def info(self, path: str) -> FileStat:
+  def info(self, path) -> FileStat:
     if path in self._blankfiles:
        return self._blankfiles[path]
-    if path.count('/') >= 2 and path in self._dirs:
+    if str(path).count('/') >= 2 and path in self._dirs:
       return self._dirs[path]
     return FSSpec.info(self, path)
 
-  def mkdir(self, path: str):
-    if path.count('/') >= 2:
+  def mkdir(self, path):
+    if str(path).count('/') >= 2:
       if path in self._dirs: raise FileExistsError(path)
       self._dirs[path] = {
         'type': 'directory',
@@ -334,16 +333,16 @@ class S3(FSSpec, UFS):
       }
     return FSSpec.mkdir(self, path)
 
-  def rmdir(self, path: str):
-    if path.count('/') >= 2:
+  def rmdir(self, path):
+    if str(path).count('/') >= 2:
       try:
         self._dirs.pop(path)
       except KeyError:
         raise FileNotFoundError(path)
     return FSSpec.rmdir(self, path)
 
-  def rename(self, src: str, dst: str):
+  def rename(self, src, dst):
     ''' s3fs doesn't support rename, use the fallback
     '''
-    self._ls_cache.discard(self._ppath(dst))
+    self._ls_cache.discard(self._path(dst.parent))
     return UFS.rename(self, src, dst)
