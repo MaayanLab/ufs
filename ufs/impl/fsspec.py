@@ -133,7 +133,10 @@ class FSSpec(UFS):
     self._ls_cache.discard(self._ppath(src))
     self._info_cache.discard(self._path(dst))
     self._ls_cache.discard(self._ppath(dst))
-    self._fs.rename(self._path(src), self._path(dst))
+    if hasattr(self._fs, 'rename'):
+      return self._fs.rename(self._path(src), self._path(dst))
+    else:
+      return UFS.rename(self, src, dst)
 
   def __repr__(self) -> str:
     return f"FSSpec({self._fs.__class__.__name__}())"
