@@ -29,11 +29,15 @@ def SafePurePosixPath(path: PathLike) -> SafePurePosixPath_:
     return path
   return SafePurePosixPath_() / path
 
-def pathparent(path: PathLike) -> SafePurePosixPath_:
-  return SafePurePosixPath(path).parent
+def pathparent(path: str):
+  parent, sep, _name = str(path).rstrip('/').rpartition('/')
+  if parent == '': return sep or ''
+  else: return parent
 
-def pathname(path: PathLike) -> SafePurePosixPath_:
-  return SafePurePosixPath(path).name
+def pathname(path: str):
+  _parent, sep, name = str(path).rstrip('/').rpartition('/')
+  if not name: return sep or ''
+  else: return name
 
 def coerce_pathlike(func: t.Callable):
   ''' Decorate functions with this and all PathLike annotated parameters become SafePurePosixPaths
