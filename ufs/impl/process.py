@@ -95,6 +95,3 @@ class Process(UFS):
       self._forward('stop')
       self._send.put(None)
       self._proc.join()
-
-  def __repr__(self) -> str:
-    return f"Process({repr(self._ufs)})"

@@ -100,6 +100,3 @@ class Prefix(UFS):
 
   def stop(self):
     self._ufs.stop()
-
-  def __repr__(self) -> str:
-    return f"Prefix({repr(self._ufs)}, {self._prefix})"

@@ -80,6 +80,3 @@ class Logger(UFS):
 
   def stop(self):
     return self._call('stop')
-
-  def __repr__(self) -> str:
-    return f"Logger({repr(self._ufs)})"

@@ -87,6 +87,3 @@ class DirCache(UFS):
 
   def stop(self):
     self._ufs.stop()
-
-  def __repr__(self) -> str:
-    return f"DirCache({repr(self._ufs)})"

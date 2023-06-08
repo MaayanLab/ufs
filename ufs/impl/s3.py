@@ -347,6 +347,3 @@ class S3(FSSpec, UFS):
     '''
     self._ls_cache.discard(self._ppath(dst))
     return UFS.rename(self, src, dst)
-
-  def __repr__(self) -> str:
-    return UFS.__repr__(self)

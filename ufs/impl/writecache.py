@@ -120,6 +120,3 @@ class Writecache(UFS):
   def stop(self):
     self._cache.stop()
     self._ufs.stop()
-
-  def __repr__(self) -> str:
-    return f"Writecache({repr(self._ufs)}, cache={repr(self._cache)})"

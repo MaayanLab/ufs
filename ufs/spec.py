@@ -70,4 +70,4 @@ class UFS:
     self.unlink(src)
 
   def __repr__(self) -> str:
-    return f"UFS({self.__class__.__name__})"
+    return f"UFS({repr(self.to_dict())})"

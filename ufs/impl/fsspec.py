@@ -137,6 +137,3 @@ class FSSpec(UFS):
       return self._fs.rename(self._path(src), self._path(dst))
     else:
       return UFS.rename(self, src, dst)
-
-  def __repr__(self) -> str:
-    return f"FSSpec({self._fs.__class__.__name__}())"
