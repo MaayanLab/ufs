@@ -10,7 +10,7 @@ import errno
 import logging
 import typing as t
 from ufs.spec import UFS, FileStat
-from ufs.pathlib import SafePosixPath
+from ufs.utils.pathlib import SafePosixPath
 
 logger = logging.getLogger(__name__)
 

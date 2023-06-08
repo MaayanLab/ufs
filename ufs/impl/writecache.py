@@ -10,7 +10,7 @@ to the underlying ufs. This is useful when your UFS doesn't support seeks.
 import typing as t
 import itertools
 from ufs.spec import UFS, FileStat
-from ufs.pathlib import pathparent, pathname
+from ufs.utils.pathlib import pathparent, pathname
 
 class Writecache(UFS):
   def __init__(self, ufs: UFS, cache: UFS):

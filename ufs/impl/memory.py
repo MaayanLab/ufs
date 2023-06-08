@@ -6,7 +6,7 @@ import itertools
 import dataclasses
 import typing as t
 from ufs.spec import UFS, FileStat
-from ufs.pathlib import pathparent, pathname
+from ufs.utils.pathlib import pathparent, pathname
 
 @dataclasses.dataclass
 class MemoryInode:

@@ -4,7 +4,7 @@ these operations are expensive such as with remote stores.
 
 import typing as t
 from ufs.spec import UFS, FileStat
-from ufs.pathlib import pathparent
+from ufs.utils.pathlib import pathparent
 from ufs.utils.cache import TTLCache
 
 class DirCache(UFS):

@@ -2,35 +2,14 @@
 '''
 import pathlib
 from ufs.spec import UFS
-
-def SafePosixPath(path: str):
-  ''' This ensures the path will always be /something
-  It's not possible to go above the parent, // or /./ does nothing, etc..
-  '''
-  p = pathlib.PurePosixPath('/')
-  for part in pathlib.PurePosixPath(path).parts:
-    if part == '..': p = p.parent
-    elif part == '.': pass
-    elif part == '': pass
-    else: p = p / part
-  return p
-
-def pathparent(path: str):
-  parent, sep, _name = path.rstrip('/').rpartition('/')
-  if parent == '': return sep or ''
-  else: return parent
-
-def pathname(path: str):
-  _parent, sep, name = path.rstrip('/').rpartition('/')
-  if not name: return sep or ''
-  else: return name
+from ufs.utils.pathlib import SafePurePosixPath, SafePurePosixPath_, PathLike
 
 class UPath:
   ''' A class implementing `pathlib.Path` methods for a `ufs`
   '''
-  def __init__(self, ufs: UFS, path: str | pathlib.PurePosixPath = '/') -> None:
+  def __init__(self, ufs: UFS, path: PathLike = '/') -> None:
     self._ufs = ufs
-    self._path = SafePosixPath(path)
+    self._path = SafePurePosixPath(path)
   
   @property
   def name(self):
@@ -46,8 +25,8 @@ class UPath:
   def __repr__(self) -> str:
     return f"UPath({repr(self._ufs)}, {repr(self._path)})"
 
-  def __truediv__(self, subpath: str):
-    return self.__class__(self._ufs, self._path / str(subpath))
+  def __truediv__(self, subpath: PathLike):
+    return self.__class__(self._ufs, self._path / subpath)
 
   def exists(self):
     try:

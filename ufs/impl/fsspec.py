@@ -11,7 +11,7 @@ import typing as t
 import itertools
 import functools
 from ufs.utils.cache import TTLCache
-from ufs.pathlib import pathparent, pathname
+from ufs.utils.pathlib import pathparent, pathname
 from datetime import datetime
 from ufs.spec import UFS, FileStat
 
