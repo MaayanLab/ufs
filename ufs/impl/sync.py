@@ -48,8 +48,8 @@ class Sync(UFS):
   def info(self, path):
     return self._forward('info', path)
 
-  def open(self, path, mode):
-    return self._forward('open', path, mode)
+  def open(self, path, mode, *, size_hint = None):
+    return self._forward('open', path, mode, size_hint=size_hint)
 
   def seek(self, fd, pos, whence = 0):
     return self._forward('seek', fd, pos, whence)

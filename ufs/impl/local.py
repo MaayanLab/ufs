@@ -29,7 +29,7 @@ class Local(UFS):
       'ctime': info.st_ctime,
       'mtime': info.st_mtime,
     }
-  def open(self, path, mode):
+  def open(self, path, mode, *, size_hint = None):
     fd = next(self._cfd)
     self._fds[fd] = open(str(path), mode)
     return fd

@@ -47,9 +47,9 @@ class UPath:
     except FileNotFoundError:
       return False
 
-  def open(self, mode: str):
-    if 'b' in mode: return UPathBinaryOpener(self._ufs, self._path, mode)
-    else: return UPathOpener(self._ufs, self._path, mode)
+  def open(self, mode: str, *, size_hint = None):
+    if 'b' in mode: return UPathBinaryOpener(self._ufs, self._path, mode, size_hint=size_hint)
+    else: return UPathOpener(self._ufs, self._path, mode, size_hint=size_hint)
 
   def unlink(self):
     self._ufs.unlink(self._path)
@@ -81,23 +81,22 @@ class UPath:
       return fr.read()
 
   def write_text(self, text: str):
-    with self.open('w') as fw:
-      fw.write(text)
+    self.write_bytes(text.encode())
 
   def read_bytes(self) -> bytes:
     with self.open('rb') as fr:
       return fr.read()
 
   def write_bytes(self, text: bytes):
-    with self.open('wb') as fw:
+    with self.open('wb', size_hint=len(text)) as fw:
       fw.write(text)
 
 class UPathBinaryOpener:
-  def __init__(self, ufs: UFS, path: SafePurePosixPath_, mode: str):
+  def __init__(self, ufs: UFS, path: SafePurePosixPath_, mode: str, *, size_hint: int=None):
     self._ufs = ufs
     self._path = path
     self._mode = mode
-    self._fd = self._ufs.open(self._path, self._mode)
+    self._fd = self._ufs.open(self._path, self._mode, size_hint=size_hint)
     self.closed = False
   def __enter__(self):
     return self
@@ -117,10 +116,10 @@ class UPathBinaryOpener:
     return self._ufs.write(self._fd, data)
 
 class UPathOpener(UPathBinaryOpener):
-  def __init__(self, ufs: UFS, path: SafePurePosixPath_, mode: str):
+  def __init__(self, ufs: UFS, path: SafePurePosixPath_, mode: str, *, size_hint: int=None):
     if mode.endswith('+'): mode_ = mode[:-1] + 'b+'
     else: mode_ = mode + 'b'
-    super().__init__(ufs, path, mode_)
+    super().__init__(ufs, path, mode_, size_hint=size_hint)
   def write(self, data: str) -> int:
     return super().write(data.encode('utf-8'))
   def read(self, amnt: int = -1) -> str:

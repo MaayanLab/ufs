@@ -35,7 +35,7 @@ class UFS:
     raise NotImplementedError()
   def info(self, path: SafePurePosixPath_) -> FileStat:
     raise NotImplementedError()
-  def open(self, path: SafePurePosixPath_, mode: FileOpenMode) -> int:
+  def open(self, path: SafePurePosixPath_, mode: FileOpenMode, *, size_hint: int = None) -> int:
     raise NotImplementedError()
   def seek(self, fd: int, pos: int, whence: FileSeekWhence = 0):
     raise NotImplementedError()
@@ -68,7 +68,7 @@ class UFS:
     if src_info['type'] != 'file':
       raise IsADirectoryError(str(src))
     src_fd = self.open(src, 'rb')
-    dst_fd = self.open(dst, 'wb')
+    dst_fd = self.open(dst, 'wb', size_hint=src_info['size'])
     while buf := self.read(src_fd, self.CHUNK_SIZE):
       self.write(dst_fd, buf)
     self.close(dst)
@@ -103,7 +103,7 @@ class AsyncUFS:
     raise NotImplementedError()
   async def info(self, path: SafePurePosixPath_) -> FileStat:
     raise NotImplementedError()
-  async def open(self, path: SafePurePosixPath_, mode: FileOpenMode) -> int:
+  async def open(self, path: SafePurePosixPath_, mode: FileOpenMode, *, size_hint: int = None) -> int:
     raise NotImplementedError()
   async def seek(self, fd: int, pos: int, whence: FileSeekWhence = 0):
     raise NotImplementedError()
@@ -136,7 +136,7 @@ class AsyncUFS:
     if src_info['type'] != 'file':
       raise IsADirectoryError(str(src))
     src_fd = await self.open(src, 'rb')
-    dst_fd = await self.open(dst, 'wb')
+    dst_fd = await self.open(dst, 'wb', size_hint=src_info['size'])
     while buf := await self.read(src_fd, self.CHUNK_SIZE):
       await self.write(dst_fd, buf)
     await self.close(dst)

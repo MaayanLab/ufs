@@ -40,7 +40,7 @@ class Memory(UFS):
     try: return self._inodes[path].info
     except KeyError: raise FileNotFoundError(path)
 
-  def open(self, path, mode):
+  def open(self, path, mode, *, size_hint = None):
     if mode.startswith('r') and path not in self._inodes: raise FileNotFoundError(path)
     if path in self._inodes and self._inodes[path].info['type'] == 'directory': raise IsADirectoryError(path)
     if path.parent not in self._dirs: raise FileNotFoundError(path.parent)

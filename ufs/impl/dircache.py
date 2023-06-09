@@ -27,10 +27,10 @@ class DirCache(UFS):
   def info(self, path):
     return self._info_cache(path)
 
-  def open(self, path, mode):
+  def open(self, path, mode, *, size_hint = None):
     self._info_cache.discard(path)
     self._ls_cache.discard(path.parent)
-    fd = self._ufs.open(path, mode)
+    fd = self._ufs.open(path, mode, size_hint=size_hint)
     self._fds[fd] = path
     return fd
   def seek(self, fd, pos, whence = 0):

@@ -42,9 +42,9 @@ class Prefix(UFS):
       return self._ufs.info(self._prefix / path)
     except FileNotFoundError:
       raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(path))
-  def open(self, path, mode):
+  def open(self, path, mode, *, size_hint = None):
     try:
-      return self._ufs.open(self._prefix / path, mode)
+      return self._ufs.open(self._prefix / path, mode, size_hint=size_hint)
     except FileNotFoundError:
       raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(path))
   def seek(self, fd, pos, whence = 0):

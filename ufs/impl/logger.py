@@ -44,8 +44,8 @@ class Logger(UFS):
 
   def info(self, path):
     return self._call('info', path)
-  def open(self, path, mode):
-    return self._call('open', path, mode)
+  def open(self, path, mode, *, size_hint = None):
+    return self._call('open', path, mode, size_hint=size_hint)
   def seek(self, fd, pos, whence = 0):
     return self._call('seek', fd, pos, whence)
   def read(self, fd, amnt):

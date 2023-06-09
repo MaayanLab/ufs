@@ -79,7 +79,7 @@ class FSSpec(UFS):
     if info is None: raise FileNotFoundError(path)
     return info
 
-  def open(self, path, mode):
+  def open(self, path, mode, *, size_hint = None):
     fd = next(self._cfd)
     self._info_cache.discard(self._path(path))
     self._ls_cache.discard(self._path(path.parent))

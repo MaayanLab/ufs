@@ -280,7 +280,7 @@ class S3(FSSpec, UFS):
       endpoint_url=self._endpoint_url,
     )
 
-  def open(self, path, mode):
+  def open(self, path, mode, *, size_hint = None):
     ''' s3fs doesn't seem to throw FileNotFound when opening non-existing files for reading.
     '''
     if 'r' in mode:
@@ -293,7 +293,7 @@ class S3(FSSpec, UFS):
         'ctime': time.time(),
         'mtime': time.time(),
       }
-    return FSSpec.open(self, path, mode)
+    return FSSpec.open(self, path, mode, size_hint=size_hint)
 
   def write(self, fd, data):
     ret = super().write(fd, data)
