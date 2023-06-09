@@ -62,7 +62,6 @@ def coerce_pathlike(func: t.Callable):
     kwargs_ = {
       argname: SafePurePosixPath(argvalue) if func_spec.annotations.get(argname) in [PathLike, SafePurePosixPath_] else argvalue
       for argname, argvalue in kwargs.items()
-      if func_spec.annotations.get(argname) in [PathLike, SafePurePosixPath_]
     }
     return func(*args_, **kwargs_)
   setattr(wrapper, '__annotations__', {
