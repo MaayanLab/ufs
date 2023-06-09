@@ -13,6 +13,7 @@ from ufs.utils.pathlib import SafePurePosixPath
   'fsspec-memory',
   'dircache-local',
   's3',
+  'sbfs',
 ])
 def ufs(request):
   ''' Result in various UFS implementations
@@ -23,7 +24,7 @@ def ufs(request):
     from ufs.impl.local import Local
     with tempfile.TemporaryDirectory() as tmp:
       yield Prefix(Local(), tmp)
-  if request.param == 'local-memory-writecache':
+  elif request.param == 'local-memory-writecache':
     import tempfile
     from ufs.impl.local import Local
     from ufs.impl.memory import Memory
@@ -110,6 +111,26 @@ def ufs(request):
           )
           ufs.mkdir('/')
           yield ufs
+  elif request.param == 'sbfs':
+    import os
+    import uuid
+    from ufs.impl.sync import Sync
+    from ufs.impl.process import Process
+    from ufs.impl.sbfs import SBFS
+    from ufs.impl.prefix import Prefix
+    from ufs.impl.memory import Memory
+    from ufs.impl.writecache import Writecache
+    from ufs.impl.logger import Logger
+    from ufs.shutil import rmtree
+    try:
+      ufs = Prefix(Writecache(Logger(Sync(SBFS(os.environ['SBFS_AUTH_TOKEN']))), Memory()), SafePurePosixPath(os.environ['SBFS_PREFIX'])/str(uuid.uuid4()))
+      ufs.mkdir('/')
+      try:
+        yield ufs
+      finally:
+        rmtree(ufs, '/')
+    except KeyError:
+      pytest.skip('Environment variables SBFS_AUTH_TOKEN and SBFS_PREFIX required for sbfs')
 
 def test_os(ufs: UFS):
   from ufs.os import UOS
