@@ -8,6 +8,7 @@ from ufs.utils.pathlib import SafePurePosixPath
   'memory',
   'process-memory',
   'local-memory-writecache',
+  'memory-async-sync',
   'fsspec-local',
   'fsspec-memory',
   'dircache-local',
@@ -39,6 +40,11 @@ def ufs(request):
     ufs.start()
     yield ufs
     ufs.stop()
+  elif request.param == 'memory-async-sync':
+    from ufs.impl.sync import Sync
+    from ufs.impl.asyn import Async
+    from ufs.impl.memory import Memory
+    yield Prefix(Sync(Async(Memory())))
   elif request.param == 'fsspec-local':
     import tempfile
     from ufs.impl.fsspec import FSSpec
