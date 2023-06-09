@@ -64,6 +64,9 @@ class UFS:
 
   # fallback
   def copy(self, src: SafePurePosixPath_, dst: SafePurePosixPath_):
+    src_info = self.info(src)
+    if src_info['type'] != 'file':
+      raise IsADirectoryError(str(src))
     src_fd = self.open(src, 'rb')
     dst_fd = self.open(dst, 'wb')
     while buf := self.read(src_fd, self.CHUNK_SIZE):
