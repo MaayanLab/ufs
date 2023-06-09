@@ -13,22 +13,26 @@ def walk(ufs: UFS, path: SafePurePosixPath_, dirfirst=True):
   '''
   info = ufs.info(path)
   if info['type'] == 'directory':
-    Q = [(path, True)] + [(path/p, False) for p in ufs.ls(path)]
+    Q = []
     if dirfirst:
       yield path, info
+    else:
+      Q += [(path, True)]
+    Q += [(path/p, False) for p in ufs.ls(path)]
     while Q:
-      path, empty = Q.pop()
-      info = ufs.info(path)
-      if info['type'] == 'file':
-        yield path, info
-      else:
+      p, empty = Q.pop()
+      i = ufs.info(p)
+      if i['type'] == 'file':
+        yield p, i
+      elif i['type'] == 'directory':
         if empty:
-          if not dirfirst:
-            yield path, info
+          yield p, i
         else:
           if dirfirst:
-            yield path, info
-          Q += [(path, True)] + [(path/p, False) for p in ufs.ls(path)]
+            yield p, i
+          else:
+            Q += [(p, True)]
+          Q += [(p/pp, False) for pp in ufs.ls(p)]
   else:
     yield path, info
 
