@@ -1,28 +1,30 @@
 import asyncio
+import itertools
 import threading as t
 from ufs.spec import UFS, AsyncUFS
 
-async def async_ufs_proc(send: asyncio.Queue, recv: asyncio.Queue, ufs_spec):
+async def async_ufs_proc(send: asyncio.PriorityQueue, recv: asyncio.PriorityQueue, ufs_spec):
   ufs = UFS.from_dict(**ufs_spec)
   while True:
     msg = await recv.get()
-    if not msg: break
-    op, args, kwargs = msg
+    i, op, args, kwargs = msg
+    if op == None: break
     try:
       func = getattr(ufs, op)
       res = await func(*args, **kwargs)
     except Exception as err:
-      await send.put([None, err])
+      await send.put([i, None, err])
     else:
-      await send.put([res, None])
+      await send.put([i, res, None])
 
-def event_loop_thread(loop, send: asyncio.Queue, recv: asyncio.Queue, ufs_spec):
+def event_loop_thread(loop, send: asyncio.PriorityQueue, recv: asyncio.PriorityQueue, ufs_spec):
   loop.run_until_complete(async_ufs_proc(send, recv, ufs_spec))
 
 class Sync(UFS):
   def __init__(self, ufs: AsyncUFS):
     super().__init__()
     self._ufs = ufs
+    self._taskid = iter(itertools.count())
 
   @staticmethod
   def from_dict(*, ufs):
@@ -37,8 +39,13 @@ class Sync(UFS):
   
   def _forward(self, op, *args, **kwargs):
     self.start()
-    asyncio.run_coroutine_threadsafe(self._send.put([op, args, kwargs]), self._loop).result()
-    ret, err = asyncio.run_coroutine_threadsafe(self._recv.get(), self._loop).result()
+    i, i_ = next(self._taskid), None
+    asyncio.run_coroutine_threadsafe(self._send.put([i, op, args, kwargs]), self._loop).result()
+    while True:
+      i_, ret, err = asyncio.run_coroutine_threadsafe(self._recv.get(), self._loop).result()
+      if i == i_: break
+      # a different result came before ours, add it back to the queue and try again
+      asyncio.run_coroutine_threadsafe(self._recv.put([i_, ret, err]), self._loop).result()
     if err is not None: raise err
     else: return ret
 
@@ -87,14 +94,18 @@ class Sync(UFS):
   def start(self):
     if not hasattr(self, '_loop'):
       self._loop = asyncio.new_event_loop()
-      self._send, self._recv = asyncio.Queue(), asyncio.Queue()
-      self._loop_thread = t.Thread(target=event_loop_thread, args=(self._loop, self._recv, self._send, self._ufs.to_dict()))
+      self._send, self._recv = asyncio.PriorityQueue(), asyncio.PriorityQueue()
+      self._loop_thread = t.Thread(
+        target=event_loop_thread,
+        args=(self._loop, self._recv, self._send, self._ufs.to_dict()),
+      )
       self._loop_thread.start()
       self._forward('start')
 
   def stop(self):
     if hasattr(self, '_loop'):
       self._forward('stop')
-      asyncio.run_coroutine_threadsafe(self._send.put(None), self._loop).result()
+      asyncio.run_coroutine_threadsafe(self._send.put([next(iter(self._taskid)), None, None, None]), self._loop).result()
       self._loop_thread.join()
-      self._loop.stop()
+      self._loop.close()
+      del self._loop

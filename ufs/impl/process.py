@@ -1,6 +1,7 @@
 ''' The UFS operates another in an independent process
 '''
 
+import itertools
 import multiprocessing as mp
 from ufs.spec import UFS
 
@@ -10,17 +11,21 @@ def ufs_proc(send: mp_spawn.Queue, recv: mp_spawn.Queue, ufs_spec):
   ufs = UFS.from_dict(**ufs_spec)
   while True:
     msg = recv.get()
-    if not msg: break
-    op, args, kwargs = msg
+    i, op, args, kwargs = msg
+    if op is None: break
     try:
-      send.put([getattr(ufs, op)(*args, **kwargs), None])
+      func = getattr(ufs, op)
+      res = func(*args, **kwargs)
     except Exception as err:
-      send.put([None, err])
+      send.put([i, None, err])
+    else:
+      send.put([i, res, None])
 
 class Process(UFS):
   def __init__(self, ufs: UFS):
     super().__init__()
     self._ufs = ufs
+    self._taskid = iter(itertools.count())
 
   @staticmethod
   def from_dict(*, ufs):
@@ -35,8 +40,13 @@ class Process(UFS):
   
   def _forward(self, op, *args, **kwargs):
     self.start()
-    self._send.put([op, args, kwargs])
-    ret, err = self._recv.get()
+    i, i_ = next(self._taskid), None
+    self._send.put([i, op, args, kwargs])
+    while True:
+      i_, ret, err = self._recv.get()
+      if i == i_: break
+      # a different result came before ours, add it back to the queue and try again
+      self._recv.put([i_, ret, err])
     if err is not None: raise err
     else: return ret
 
@@ -92,5 +102,5 @@ class Process(UFS):
   def stop(self):
     if hasattr(self, '_proc'):
       self._forward('stop')
-      self._send.put(None)
+      self._send.put([next(self._taskid), None, None, None])
       self._proc.join()

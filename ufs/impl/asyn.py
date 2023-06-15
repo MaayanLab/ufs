@@ -1,28 +1,26 @@
 import asyncio
+import itertools
 from ufs.spec import UFS, AsyncUFS
 
-def ufs_thread(loop: asyncio.AbstractEventLoop, send: asyncio.Queue, recv: asyncio.Queue, ufs_spec):
+def ufs_thread(loop: asyncio.AbstractEventLoop, send: asyncio.PriorityQueue, recv: asyncio.PriorityQueue, ufs_spec):
   ufs = UFS.from_dict(**ufs_spec)
   while True:
     msg = asyncio.run_coroutine_threadsafe(recv.get(), loop).result()
-    if not msg: break
-    op, args, kwargs = msg
+    i, op, args, kwargs = msg
+    if op is None: break
     try:
       func = getattr(ufs, op)
       res = func(*args, **kwargs)
     except Exception as err:
-      asyncio.run_coroutine_threadsafe(send.put([None, err]), loop).result()
+      asyncio.run_coroutine_threadsafe(send.put([i, None, err]), loop).result()
     else:
-      asyncio.run_coroutine_threadsafe(send.put([res, None]), loop).result()
-
-async def run_ufs(send: asyncio.Queue, recv: asyncio.Queue, ufs_spec):
-  loop = asyncio.get_event_loop()
-  await loop.run_in_executor(None, ufs_thread, loop, send, recv, ufs_spec)
+      asyncio.run_coroutine_threadsafe(send.put([i, res, None]), loop).result()
 
 class Async(AsyncUFS):
   def __init__(self, ufs: UFS):
     super().__init__()
     self._ufs = ufs
+    self._taskid = iter(itertools.count())
 
   @staticmethod
   def from_dict(*, ufs):
@@ -37,8 +35,13 @@ class Async(AsyncUFS):
   
   async def _forward(self, op, *args, **kwargs):
     await self.start()
-    await self._send.put([op, args, kwargs])
-    ret, err = await self._recv.get()
+    i, i_ = next(self._taskid), None
+    await self._send.put([i, op, args, kwargs])
+    while True:
+      i_, ret, err = await self._recv.get()
+      if i == i_: break
+      # a different result came before ours, add it back to the queue and try again
+      await self._recv.put([i_, ret, err])
     if err is not None: raise err
     else: return ret
 
@@ -86,12 +89,14 @@ class Async(AsyncUFS):
 
   async def start(self):
     if not hasattr(self, '_task'):
-      self._send, self._recv = asyncio.Queue(), asyncio.Queue()
-      self._task = asyncio.create_task(run_ufs(self._recv, self._send, self._ufs.to_dict()))
+      self._send, self._recv = asyncio.PriorityQueue(), asyncio.PriorityQueue()
+      loop = asyncio.get_event_loop()
+      self._task = loop.run_in_executor(None, ufs_thread, loop, self._recv, self._send, self._ufs.to_dict())
       await self._forward('start')
 
   async def stop(self):
     if hasattr(self, '_task'):
       await self._forward('stop')
-      await self._send.put(None)
+      await self._send.put([next(self._taskid), None, None, None])
       await self._task
+      del self._task
