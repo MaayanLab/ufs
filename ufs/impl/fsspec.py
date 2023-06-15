@@ -126,11 +126,12 @@ class FSSpec(UFS):
     self._ls_cache.discard(self._path(dst.parent))
 
   def rename(self, src, dst):
+    try:
+      if not hasattr(self._fs, 'rename'): raise NotImplementedError()
+      self._fs.rename(self._path(src), self._path(dst))
+    except NotImplementedError:
+      UFS.rename(self, src, dst)
     self._info_cache.discard(self._path(src))
     self._ls_cache.discard(self._path(src.parent))
     self._info_cache.discard(self._path(dst))
     self._ls_cache.discard(self._path(dst.parent))
-    if hasattr(self._fs, 'rename'):
-      return self._fs.rename(self._path(src), self._path(dst))
-    else:
-      return UFS.rename(self, src, dst)
