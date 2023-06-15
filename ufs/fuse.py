@@ -124,12 +124,8 @@ class FUSEOps(LoggingMixIn, Operations):
 
 def fuse(ufs_spec: dict, mount_dir: str):
   from fuse import FUSE
-  ufs = UFS.from_dict(**ufs_spec)
-  ufs.start()
-  try:
+  with UFS.from_dict(**ufs_spec) as ufs:
     FUSE(FUSEOps(ufs), mount_dir, nothreads=True, foreground=True)
-  finally:
-    ufs.stop()
 
 @contextlib.contextmanager
 def fuse_mount(ufs: UFS, mount_dir: str = None):
@@ -141,9 +137,8 @@ def fuse_mount(ufs: UFS, mount_dir: str = None):
   from ufs.utils.polling import wait_for, safe_predicate
   mp_spawn = mp.get_context('spawn')
   mount_dir_resolved = pathlib.Path(mount_dir or tempfile.mkdtemp())
-  ufs_spec = ufs.to_dict()
   try:
-    with active_process(mp_spawn.Process(target=fuse, args=(ufs_spec, str(mount_dir_resolved))), terminate_signal=signal.SIGINT):
+    with active_process(mp_spawn.Process(target=fuse, args=(ufs.to_dict(), str(mount_dir_resolved))), terminate_signal=signal.SIGINT):
       wait_for(functools.partial(safe_predicate, mount_dir_resolved.is_mount))
       yield mount_dir_resolved
   finally:

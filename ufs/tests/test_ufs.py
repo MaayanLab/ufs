@@ -23,48 +23,50 @@ def ufs(request):
     import tempfile
     from ufs.impl.local import Local
     with tempfile.TemporaryDirectory() as tmp:
-      yield Prefix(Local(), tmp)
+      with Prefix(Local(), tmp) as ufs:
+        yield ufs
   elif request.param == 'local-memory-writecache':
     import tempfile
     from ufs.impl.local import Local
     from ufs.impl.memory import Memory
     from ufs.impl.writecache import Writecache
     with tempfile.TemporaryDirectory() as tmp:
-      yield Writecache(Prefix(Local(), tmp), Memory())
+      with Writecache(Prefix(Local(), tmp), Memory()) as ufs:
+        yield ufs
   elif request.param == 'memory':
     from ufs.impl.memory import Memory
-    yield Memory()
+    with Memory() as ufs:
+      yield ufs
   elif request.param == 'process-memory':
     from ufs.impl.process import Process
     from ufs.impl.memory import Memory
-    ufs = Process(Memory())
-    ufs.start()
-    yield ufs
-    ufs.stop()
+    with Process(Memory()) as ufs:
+      yield ufs
   elif request.param == 'memory-async-sync':
     from ufs.impl.sync import Sync
     from ufs.impl.asyn import Async
     from ufs.impl.memory import Memory
-    ufs = Sync(Async(Memory()))
-    ufs.start()
-    yield ufs
-    ufs.stop()
+    with Sync(Async(Memory())) as ufs:
+      yield ufs
   elif request.param == 'fsspec-local':
     import tempfile
     from ufs.impl.fsspec import FSSpec
     from fsspec.implementations.local import LocalFileSystem
     with tempfile.TemporaryDirectory() as tmp:
-      yield Prefix(FSSpec(LocalFileSystem()), tmp)
+      with Prefix(FSSpec(LocalFileSystem()), tmp) as ufs:
+        yield ufs
   elif request.param == 'fsspec-memory':
     from ufs.impl.fsspec import FSSpec
     from fsspec.implementations.memory import MemoryFileSystem
-    yield FSSpec(MemoryFileSystem())
+    with FSSpec(MemoryFileSystem()) as ufs:
+      yield ufs
   elif request.param == 'dircache-local':
     import tempfile
     from ufs.impl.local import Local
     from ufs.impl.dircache import DirCache
     with tempfile.TemporaryDirectory() as tmp:
-      yield DirCache(Prefix(Local(), tmp))
+      with DirCache(Prefix(Local(), tmp)) as ufs:
+        yield ufs
   elif request.param == 's3':
     import shutil
     # look for the minio command for running an s3 server
@@ -82,6 +84,7 @@ def ufs(request):
       from ufs.impl.s3 import S3
       from ufs.utils.polling import wait_for, safe_predicate
       from ufs.utils.process import active_process
+      from ufs.shutil import rmtree
       # get a temporary directory to store s3 files in
       with tempfile.TemporaryDirectory() as tmp:
         # generate credentials for minio
@@ -104,16 +107,19 @@ def ufs(request):
           # wait for minio to be running & ready
           wait_for(functools.partial(safe_predicate, lambda: urlopen(Request(f"http://{host}:{port}/minio/health/live", method='HEAD')).status == 200))
           # create an fsspec connection to the minio server
-          ufs = Prefix(
+          with Prefix(
             S3(
               access_key=MINIO_ROOT_USER,
               secret_access_key=MINIO_ROOT_PASSWORD,
               endpoint_url=f"http://{host}:{port}",
             ),
             '/test',
-          )
-          ufs.mkdir('/')
-          yield ufs
+          ) as ufs:
+            ufs.mkdir('/')
+            try:
+              yield ufs
+            finally:
+              rmtree(ufs, '/')
   elif request.param == 'sbfs':
     import os
     import uuid
@@ -125,18 +131,18 @@ def ufs(request):
     from ufs.impl.writecache import Writecache
     from ufs.shutil import rmtree
     try:
-      ufs = Writecache(
+      with Writecache(
         Prefix(
           Sync(SBFS(os.environ['SBFS_AUTH_TOKEN'])),
           SafePurePosixPath(os.environ['SBFS_PREFIX'])/str(uuid.uuid4())
         ),
         Memory()
-      )
-      ufs.mkdir('/')
-      try:
-        yield ufs
-      finally:
-        rmtree(ufs, '/')
+      ) as ufs:
+        ufs.mkdir('/')
+        try:
+          yield ufs
+        finally:
+          rmtree(ufs, '/')
     except KeyError:
       pytest.skip('Environment variables SBFS_AUTH_TOKEN and SBFS_PREFIX required for sbfs')
 
