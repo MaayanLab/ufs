@@ -45,7 +45,10 @@ def ufs(request):
     from ufs.impl.sync import Sync
     from ufs.impl.asyn import Async
     from ufs.impl.memory import Memory
-    yield Sync(Async(Memory()))
+    ufs = Sync(Async(Memory()))
+    ufs.start()
+    yield ufs
+    ufs.stop()
   elif request.param == 'fsspec-local':
     import tempfile
     from ufs.impl.fsspec import FSSpec
