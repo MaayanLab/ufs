@@ -126,8 +126,10 @@ def fuse(ufs_spec: dict, mount_dir: str):
   from fuse import FUSE
   ufs = UFS.from_dict(**ufs_spec)
   ufs.start()
-  FUSE(FUSEOps(ufs), mount_dir, foreground=True)
-  ufs.stop()
+  try:
+    FUSE(FUSEOps(ufs), mount_dir, nothreads=True, foreground=True)
+  finally:
+    ufs.stop()
 
 @contextlib.contextmanager
 def fuse_mount(ufs: UFS, mount_dir: str = None):
