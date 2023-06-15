@@ -95,6 +95,6 @@ class Sync(UFS):
   def stop(self):
     if hasattr(self, '_loop'):
       self._forward('stop')
-      self._send.put(None)
+      asyncio.run_coroutine_threadsafe(self._send.put(None), self._loop).result()
       self._loop_thread.join()
       self._loop.stop()
