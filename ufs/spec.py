@@ -78,6 +78,13 @@ class UFS:
     self.copy(src, dst)
     self.unlink(src)
 
+  def __enter__(self):
+    self.start()
+    return self
+
+  def __exit__(self, *args):
+    self.stop()
+
   def __repr__(self) -> str:
     return f"UFS({repr(self.to_dict())})"
 
@@ -145,6 +152,13 @@ class AsyncUFS:
   async def rename(self, src: SafePurePosixPath_, dst: SafePurePosixPath_):
     await self.copy(src, dst)
     await self.unlink(src)
+
+  async def __aenter__(self):
+    await self.start()
+    return self
+
+  async def __aexit__(self, *args):
+    await self.stop()
 
   def __repr__(self) -> str:
     return f"AsyncUFS({repr(self.to_dict())})"
