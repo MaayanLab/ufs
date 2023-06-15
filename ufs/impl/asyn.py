@@ -91,7 +91,7 @@ class Async(AsyncUFS):
       await self._forward('start')
 
   async def stop(self):
-    if hasattr(self, '_loop'):
+    if hasattr(self, '_task'):
       await self._forward('stop')
       await self._send.put(None)
       await self._task
