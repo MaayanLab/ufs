@@ -30,14 +30,14 @@ def ufs(request):
     from ufs.impl.memory import Memory
     from ufs.impl.writecache import Writecache
     with tempfile.TemporaryDirectory() as tmp:
-      yield Prefix(Writecache(Local(), Memory()), tmp)
+      yield Writecache(Prefix(Local(), tmp), Memory())
   elif request.param == 'memory':
     from ufs.impl.memory import Memory
-    yield Prefix(Memory())
+    yield Memory()
   elif request.param == 'process-memory':
     from ufs.impl.process import Process
     from ufs.impl.memory import Memory
-    ufs = Process(Prefix(Memory()))
+    ufs = Process(Memory())
     ufs.start()
     yield ufs
     ufs.stop()
@@ -45,7 +45,7 @@ def ufs(request):
     from ufs.impl.sync import Sync
     from ufs.impl.asyn import Async
     from ufs.impl.memory import Memory
-    yield Prefix(Sync(Async(Memory())))
+    yield Sync(Async(Memory()))
   elif request.param == 'fsspec-local':
     import tempfile
     from ufs.impl.fsspec import FSSpec
@@ -55,13 +55,13 @@ def ufs(request):
   elif request.param == 'fsspec-memory':
     from ufs.impl.fsspec import FSSpec
     from fsspec.implementations.memory import MemoryFileSystem
-    yield Prefix(FSSpec(MemoryFileSystem()))
+    yield FSSpec(MemoryFileSystem())
   elif request.param == 'dircache-local':
     import tempfile
     from ufs.impl.local import Local
     from ufs.impl.dircache import DirCache
     with tempfile.TemporaryDirectory() as tmp:
-      yield Prefix(DirCache(Local()), tmp)
+      yield DirCache(Prefix(Local(), tmp))
   elif request.param == 's3':
     import shutil
     # look for the minio command for running an s3 server
@@ -120,10 +120,15 @@ def ufs(request):
     from ufs.impl.prefix import Prefix
     from ufs.impl.memory import Memory
     from ufs.impl.writecache import Writecache
-    from ufs.impl.logger import Logger
     from ufs.shutil import rmtree
     try:
-      ufs = Prefix(Writecache(Logger(Sync(SBFS(os.environ['SBFS_AUTH_TOKEN']))), Memory()), SafePurePosixPath(os.environ['SBFS_PREFIX'])/str(uuid.uuid4()))
+      ufs = Writecache(
+        Prefix(
+          Sync(SBFS(os.environ['SBFS_AUTH_TOKEN'])),
+          SafePurePosixPath(os.environ['SBFS_PREFIX'])/str(uuid.uuid4())
+        ),
+        Memory()
+      )
       ufs.mkdir('/')
       try:
         yield ufs
