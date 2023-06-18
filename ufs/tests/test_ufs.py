@@ -171,6 +171,7 @@ def test_map(ufs: UFS):
 @pytest.fixture(params=[
   'pathlib',
   'fuse',
+  'ffuse',
 ])
 def path(request, ufs):
   ufs.info(SafePurePosixPath('/'))
@@ -184,6 +185,13 @@ def path(request, ufs):
       mount_dir = mount_dir / 'fuse'
       mount_dir.mkdir()
       yield mount_dir
+  elif request.param == 'ffuse':
+    from ufs.ffuse import ffuse_mount
+    with ffuse_mount(ufs) as mount_dir:
+      mount_dir = mount_dir / 'ffuse'
+      mount_dir.mkdir()
+      yield mount_dir
+
 
 def test_ufs(path: UPath):
   ''' Actually test that filesystem ops work as expected
