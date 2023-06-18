@@ -51,15 +51,15 @@ def copyfile(src_ufs: UFS, src_path: SafePurePosixPath_, dst_ufs: UFS, dst_path:
 @coerce_pathlike
 def copytree(src_ufs: UFS, src_path: SafePurePosixPath_, dst_ufs: UFS, dst_path: SafePurePosixPath_, exists_ok=False):
   for p, i in walk(src_ufs, src_path, dirfirst=True):
-    rel_path = p[len(src_path):]
+    rel_path = p.relative_to(src_path)
     if i['type'] == 'directory':
       try:
-        dst_ufs.mkdir(dst_path + rel_path)
+        dst_ufs.mkdir(dst_path / rel_path)
       except FileExistsError:
         if not exists_ok:
           raise
     elif i['type'] == 'file':
-      copyfile(src_ufs, p, dst_path, dst_path + rel_path)
+      copyfile(src_ufs, p, dst_ufs, dst_path / rel_path)
 
 @coerce_pathlike
 def copy(src_ufs: UFS, src_path: SafePurePosixPath_, dst_ufs: UFS, dst_path: SafePurePosixPath_):

@@ -13,6 +13,10 @@ class SafePurePosixPath_:
   @property
   def parent(self):
     return SafePurePosixPath_(self._path.parent)
+  @staticmethod
+  def _from_parts(parts):
+    root, *ps = parts
+    return root + '/'.join(ps)
   def __truediv__(self, subpath: 'PathLike'):
     p = self._path
     sp = subpath if isinstance(subpath, pathlib.PurePosixPath) or isinstance(subpath, SafePurePosixPath_) else pathlib.PurePosixPath(str(subpath))
@@ -21,6 +25,11 @@ class SafePurePosixPath_:
       elif part in ['/', '.', '']: pass
       else: p = p / part
     return SafePurePosixPath_(p)
+  def relative_to(self, parentpath: 'PathLike'):
+    if parentpath.parts != self.parts[:len(parentpath.parts)]:
+      raise RuntimeError('Not relative')
+    else:
+      return SafePurePosixPath_._from_parts(('.', *self.parts[len(parentpath.parts):]))
   def __getattr__(self, attr):
     return getattr(self._path, attr)
   def __str__(self) -> str:
