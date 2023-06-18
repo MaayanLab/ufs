@@ -3,6 +3,7 @@
 
 import sys
 import uuid
+import json
 import queue
 import socket
 import logging
@@ -37,9 +38,37 @@ class QueueBufferedReader(queue.Queue):
     else:
       ret = self.buffer[:amnt]
     self.buffer = self.buffer[len(ret):]
+    logger.info(f"read({amnt=}) -> {ret}")
     return ret
   def write(self, data: bytes):
     self.put(data)
+
+class BufferedIteratorReader:
+  def __init__(self, reader) -> None:
+    self.buffer = b''
+    self.reader = reader
+  def read(self, amnt = -1):
+    while amnt == -1 or len(self.buffer) < amnt:
+      try:
+        buf = next(self.reader)
+      except StopIteration:
+        break
+      self.buffer += buf
+    if amnt == -1:
+      ret = self.buffer
+    else:
+      ret = self.buffer[:amnt]
+    self.buffer = self.buffer[len(ret):]
+    logger.info(f"read({amnt=}) -> {ret}")
+    return ret
+
+def rstrip_iter(it, rstrip):
+  last = None
+  for el in it:
+    if last is not None:
+      yield last
+    last = el
+  yield last.rstrip(rstrip)
 
 class RClone(UFS):
   def __init__(self, env: dict = {}):
@@ -83,13 +112,20 @@ class RClone(UFS):
   def ls(self, path):
     fs, path = rclone_uri_from_path(path)
     if not fs:
-      req = requests.post(f"http://{self._host}:{self._port}/config/listremotes", auth=(self._user, self._pass), json=dict())
+      req = requests.post(
+        f"http://{self._host}:{self._port}/config/listremotes",
+        auth=(self._user, self._pass),
+      )
       if req.status_code != 200:
         raise FileNotFoundError()
       ret = req.json()
       return ret['remotes']
     else:
-      req = requests.post(f"http://{self._host}:{self._port}/operations/list", auth=(self._user, self._pass), params=dict(fs=fs, remote=str(path)[1:]), json=dict())
+      req = requests.post(
+        f"http://{self._host}:{self._port}/operations/list",
+        auth=(self._user, self._pass),
+        params=dict(fs=fs, remote=str(path)[1:]),
+      )
       if req.status_code != 200:
         raise FileNotFoundError()
       ret = req.json()
@@ -100,19 +136,29 @@ class RClone(UFS):
     if not fs:
       return { 'type': 'directory', 'size': 0 }
     if not path:
-      req = requests.post(f"http://{self._host}:{self._port}/operations/fsinfo", auth=(self._user, self._pass), params=dict(fs=fs), json=dict())
+      req = requests.post(
+        f"http://{self._host}:{self._port}/operations/fsinfo",
+        auth=(self._user, self._pass),
+        params=dict(fs=fs),
+      )
       if req.status_code != 200:
         raise FileNotFoundError
       return { 'type': 'directory', 'size': 0 }
     else:
-      req = requests.post(f"http://{self._host}:{self._port}/operations/list", auth=(self._user, self._pass), params=dict(fs=fs, remote=str(path.parent)[1:]), json=dict())
+      req = requests.post(
+        f"http://{self._host}:{self._port}/operations/list",
+        auth=(self._user, self._pass),
+        params=dict(fs=fs, remote=str(path.parent)[1:]),
+      )
       if req.status_code != 200:
         raise FileNotFoundError()
       ret = req.json()
+      logger.info(f"{ret=}")
       try:
         item = next(iter(item for item in ret['list'] if item['Name'] == path.name))
       except StopIteration:
         raise FileNotFoundError()
+      logger.info(f"{item=}")
       if item['IsDir']:
         return {
           'type': 'directory',
@@ -129,14 +175,24 @@ class RClone(UFS):
   def open(self, path, mode, *, size_hint = None):
     fs, path = rclone_uri_from_path(path)
     if not fs: raise PermissionError()
+    if not path: raise PermissionError()
     if '+' in mode:
       raise NotImplementedError(mode)
     if 'r' in mode:
-      req = requests.get(f"http://{self._host}:{self._port}/[{fs}]{path}", auth=(self._user, self._pass))
+      req = requests.post(
+        f"http://{self._host}:{self._port}/core/command",
+        auth=(self._user, self._pass),
+        json=dict(
+          command='cat',
+          arg=json.dumps([fs + str(path)[1:]]),
+          returnType='STREAM_ONLY_STDOUT',
+        ),
+        stream=True,
+      )
       if req.status_code != 200:
         raise FileNotFoundError()
       fd = next(self._cfd)
-      self._fds[fd] = dict(mode='r', fs=fs, path=path, req=req)
+      self._fds[fd] = dict(mode='r', fs=fs, path=path, reader=BufferedIteratorReader(rstrip_iter(req.iter_content(self.CHUNK_SIZE), b'{}\n')))
     elif 'w' in mode:
       fd = next(self._cfd)
       pipe = QueueBufferedReader()
@@ -145,10 +201,8 @@ class RClone(UFS):
         args=(f"http://{self._host}:{self._port}/operations/uploadfile",),
         kwargs=dict(
           auth=(self._user, self._pass),
-          params=dict(fs=fs, remote=str(path)[1:]),
-          files={
-            'file0': (path.name, pipe, 'application/octet-stream'),
-          }
+          params=dict(fs=fs, remote=str(path.parent)[1:]),
+          files={'file0': (path.name, pipe, 'application/octet-stream')},
         ),
       )
       thread.start()
@@ -160,7 +214,7 @@ class RClone(UFS):
     raise NotImplementedError()
   def read(self, fd, amnt):
     if self._fds[fd]['mode'] != 'r': raise NotImplementedError()
-    return self._fds[fd]['req'].read(amnt)
+    return self._fds[fd]['reader'].read(amnt)
   def write(self, fd, data):
     if self._fds[fd]['mode'] != 'w': raise NotImplementedError()
     self._fds[fd]['pipe'].write(data)
@@ -179,10 +233,11 @@ class RClone(UFS):
     fs, path = rclone_uri_from_path(path)
     if not fs: raise PermissionError()
     if not path: raise PermissionError()
-    req = requests.post(f"http://{self._host}:{self._port}/operations/deletefile", auth=(self._user, self._pass), json=dict(
-      fs=fs,
-      remote=str(path)[1:],
-    ))
+    req = requests.post(
+      f"http://{self._host}:{self._port}/operations/deletefile",
+      auth=(self._user, self._pass),
+      params=dict(fs=fs, remote=str(path)[1:])
+    )
     if req.status_code != 200:
       raise FileNotFoundError()
 
@@ -190,20 +245,22 @@ class RClone(UFS):
     fs, path = rclone_uri_from_path(path)
     if not fs: raise PermissionError()
     if not path: raise PermissionError()
-    req = requests.post(f"http://{self._host}:{self._port}/operations/mkdir", auth=(self._user, self._pass), json=dict(
-      fs=fs,
-      remote=str(path)[1:],
-    ))
+    req = requests.post(
+      f"http://{self._host}:{self._port}/operations/mkdir",
+      auth=(self._user, self._pass),
+      params=dict(fs=fs, remote=str(path)[1:]),
+    )
     ret = req.json()
 
   def rmdir(self, path):
     fs, path = rclone_uri_from_path(path)
     if not fs: raise PermissionError()
     if not path: raise PermissionError()
-    req = requests.post(f"http://{self._host}:{self._port}/operations/rmdir", auth=(self._user, self._pass), json=dict(
-      fs=fs,
-      remote=str(path)[1:],
-    ))
+    req = requests.post(
+      f"http://{self._host}:{self._port}/operations/rmdir",
+      auth=(self._user, self._pass),
+      params=dict(fs=fs, remote=str(path)[1:]),
+    )
     ret = req.json()
 
   def copy(self, src, dst):
@@ -211,12 +268,16 @@ class RClone(UFS):
     dst_fs, dst_path = rclone_uri_from_path(dst)
     if not src_fs or not dst_fs: raise PermissionError()
     if not src_path or not dst_path: raise PermissionError()
-    req = requests.post(f"http://{self._host}:{self._port}/operations/copyfile", auth=(self._user, self._pass), json=dict(
-      srcFs=src_fs,
-      srcRemote=str(src_path)[1:],
-      dstFs=dst_fs,
-      dstRemote=str(dst_path)[1:],
-    ))
+    req = requests.post(
+      f"http://{self._host}:{self._port}/operations/copyfile",
+      auth=(self._user, self._pass),
+      params=dict(
+        srcFs=src_fs,
+        srcRemote=str(src_path)[1:],
+        dstFs=dst_fs,
+        dstRemote=str(dst_path)[1:],
+      )
+    )
     ret = req.json()
 
   def rename(self, src, dst):
@@ -224,10 +285,14 @@ class RClone(UFS):
     dst_fs, dst_path = rclone_uri_from_path(dst)
     if not src_fs or not dst_fs: raise PermissionError()
     if not src_path or not dst_path: raise PermissionError()
-    req = requests.post(f"http://{self._host}:{self._port}/operations/movefile", auth=(self._user, self._pass), json=dict(
-      srcFs=src_fs,
-      srcRemote=str(src_path)[1:],
-      dstFs=dst_fs,
-      dstRemote=str(dst_path)[1:],
-    ))
+    req = requests.post(
+      f"http://{self._host}:{self._port}/operations/movefile",
+      auth=(self._user, self._pass),
+      params=dict(
+        srcFs=src_fs,
+        srcRemote=str(src_path)[1:],
+        dstFs=dst_fs,
+        dstRemote=str(dst_path)[1:],
+      ),
+    )
     ret = req.json()

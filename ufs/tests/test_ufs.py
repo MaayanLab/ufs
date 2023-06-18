@@ -154,23 +154,29 @@ def ufs(request):
     from ufs.impl.prefix import Prefix
     from ufs.impl.writecache import Writecache
     from ufs.impl.memory import Memory
+    from ufs.impl.logger import Logger
     with tempfile.TemporaryDirectory() as tmp:
       tmp = pathlib.Path(tmp)
       (tmp/'data').mkdir()
       (tmp/'config').mkdir()
-      with Writecache(Prefix(RClone(dict(
+      (tmp/'config'/'rclone.conf').touch()
+      with Writecache(Prefix(Logger(RClone(dict(
         RCLONE_CONFIG_DIR=str(tmp/'config'),
         RCLONE_CONFIG_LOCAL_TYPE='alias',
         RCLONE_CONFIG_LOCAL_REMOTE=str(tmp/'data'),
-      )), '/local'), Memory()) as ufs:
+      ))), '/local'), Memory()) as ufs:
         yield ufs
   elif request.param == 'rclone-memory':
+    import pathlib
     import tempfile
     from ufs.impl.rclone import RClone
     from ufs.impl.prefix import Prefix
     from ufs.impl.writecache import Writecache
     from ufs.impl.memory import Memory
     with tempfile.TemporaryDirectory() as tmp:
+      tmp = pathlib.Path(tmp)
+      (tmp/'config').mkdir()
+      (tmp/'config'/'rclone.conf').touch()
       with Writecache(Prefix(RClone(dict(
         RCLONE_CONFIG_DIR=tmp,
         RCLONE_CONFIG_MEMORY_TYPE='memory',
