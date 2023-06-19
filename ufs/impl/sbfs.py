@@ -1,6 +1,7 @@
 import json
 import aiohttp
 import logging
+from datetime import datetime
 from ufs.spec import AsyncUFS, AsyncDescriptorFromAtomicMixin
 from ufs.utils.pathlib import SafePurePosixPath_
 
@@ -147,8 +148,12 @@ class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
       elif info['type'] == 'file':
         details = await self._file_details(info, params=dict(fields='size,created_on,modified_on'))
         logger.info(f"{details=}")
-        # TODO: capture, atime, mtime, e.g. 2023-06-09T14:01:56Z
-        return { 'type': 'file', 'size': details['size'] }
+        ret = { 'type': 'file', 'size': details['size'] }
+        try: ret['ctime'] = datetime.fromisoformat(details['created_on']).timestamp()
+        except: pass
+        try: ret['mtime'] = datetime.fromisoformat(details['modified_on']).timestamp()
+        except: pass
+        return ret
       else:
         raise NotImplementedError(info['type'])
 
