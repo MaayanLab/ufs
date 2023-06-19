@@ -4,6 +4,7 @@ import logging
 from datetime import datetime
 from ufs.spec import AsyncUFS, AsyncDescriptorFromAtomicMixin
 from ufs.utils.pathlib import SafePurePosixPath_
+from ufs.utils.cache import TTLCacheStore, Result
 
 logger = logging.getLogger(__name__)
 
@@ -18,23 +19,27 @@ def one(items):
 class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
   CHUNK_SIZE = 8192
 
-  def __init__(self, auth_token: str, api_endpoint='https://cavatica-api.sbgenomics.com'):
+  def __init__(self, auth_token: str, api_endpoint='https://cavatica-api.sbgenomics.com', ttl=60):
     super().__init__()
     assert auth_token is not None, 'SBFS auth_token is required'
     self._auth_token = auth_token
     self._api_endpoint = api_endpoint
+    self._ttl = ttl
+    self._sbfs_cache = TTLCacheStore(ttl=self._ttl)
 
   @staticmethod
-  def from_dict(*, auth_token, api_endpoint):
+  def from_dict(*, auth_token, api_endpoint, ttl):
     return SBFS(
       auth_token=auth_token,
       api_endpoint=api_endpoint,
+      ttl=ttl,
     )
 
   def to_dict(self):
     return dict(super().to_dict(),
       auth_token=self._auth_token,
       api_endpoint=self._api_endpoint,
+      ttl=self._ttl,
     )
 
   async def start(self):
@@ -49,20 +54,33 @@ class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
     self._session = await self._session_mgr.__aenter__()
 
   async def _user(self):
-    async with self._session.get(f"{self._api_endpoint}/v2/user") as req:
-      return await req.json()
+    try:
+      user = self._sbfs_cache['user:']
+    except KeyError:
+      async with self._session.get(f"{self._api_endpoint}/v2/user") as req:
+         self._sbfs_cache['user:'] = user = await req.json()
+    return user
 
   async def _projects(self, params: dict):
-    async with self._session.get(f"{self._api_endpoint}/v2/projects", params=params) as res:
-      ret = await res.json()
-    logger.info(f"{ret['items']}")
-    for item in ret['items']:
+    # TODO: paginate
+    try:
+      items = self._sbfs_cache['projects:'+str(params)]
+    except KeyError:
+      async with self._session.get(f"{self._api_endpoint}/v2/projects", params=params) as res:
+        ret = await res.json()
+      self._sbfs_cache['projects:'+str(params)] = items = ret['items']
+    for item in items:
       yield item
 
   async def _files(self, params: dict):
-    async with self._session.get(f"{self._api_endpoint}/v2/files", params=params) as res:
-      ret = await res.json()
-    for item in ret['items']:
+    # TODO: paginate
+    try:
+      items = self._sbfs_cache['files:'+str(params)]
+    except KeyError:
+      async with self._session.get(f"{self._api_endpoint}/v2/files", params=params) as res:
+        ret = await res.json()
+      self._sbfs_cache['files:'+str(params)] = items = ret['items']
+    for item in items:
       yield item
 
   async def _as_parent_params(self, path: SafePurePosixPath_):
@@ -75,24 +93,34 @@ class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
       return dict(parent=(await self._file_info(path))['id'])
     
   async def _file_info(self, path: SafePurePosixPath_):
-    import aiohttp.client_exceptions
     try:
-      info = one([
-        item
-        async for item in self._files(params=dict(await self._as_parent_params(path.parent), name=path.name))
-        if item['name'] == path.name
-      ])
-      logger.debug(f"_file_info({path}) -> {info}")
-      return info
-    except aiohttp.client_exceptions.ClientResponseError as e:
-      if e.code == 404: raise FileNotFoundError(str(path))
-      else: raise e
-    except StopIteration:
-      raise FileNotFoundError(str(path))
+      entry = self._sbfs_cache['file_info:'+str(path)]
+    except KeyError:
+      import aiohttp.client_exceptions
+      try:
+        info = one([
+          item
+          async for item in self._files(params=dict(await self._as_parent_params(path.parent), name=path.name))
+          if item['name'] == path.name
+        ])
+        logger.debug(f"_file_info({path}) -> {info}")
+        entry = Result(val=info)
+      except aiohttp.client_exceptions.ClientResponseError as e:
+        if e.code == 404: entry = Result(err=FileNotFoundError(str(path)))
+        else: entry = Result(err=e)
+      except StopIteration:
+        entry = Result(err=FileNotFoundError(str(path)))
+      self._sbfs_cache['file_info:'+str(path)] = entry
+    if entry.err is not None: raise entry.err
+    else: return entry.val
 
-  async def _file_details(self, file_info: dict, params: dict):
-    async with self._session.get(f"{self._api_endpoint}/v2/files/{file_info['id']}", params=params) as req:
-      return await req.json()
+  async def _file_details(self, file_info: dict):
+    try:
+      ret = self._sbfs_cache['file_details:'+file_info['id']]
+    except KeyError:
+      async with self._session.get(f"{self._api_endpoint}/v2/files/{file_info['id']}", params=dict(fields='size,created_on,modified_on')) as req:
+        self._sbfs_cache['file_details:'+file_info['id']] = ret = await req.json()
+    return ret
 
   async def _delete(self, file_info):
     async with self._session.delete(f"{self._api_endpoint}/v2/files/{file_info['id']}") as res:
@@ -146,7 +174,7 @@ class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
       if info['type'] == 'folder':
         return { 'type': 'directory', 'size': 0 }
       elif info['type'] == 'file':
-        details = await self._file_details(info, params=dict(fields='size,created_on,modified_on'))
+        details = await self._file_details(info)
         logger.info(f"{details=}")
         ret = { 'type': 'file', 'size': details['size'] }
         try: ret['ctime'] = datetime.fromisoformat(details['created_on']).timestamp()
@@ -208,12 +236,16 @@ class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
       logger.debug(f"complete")
       async with self._session.post(f"{self._api_endpoint}/v2/upload/multipart/{upload_info['upload_id']}/complete") as req:
         logger.debug(await req.read())
+    self._sbfs_cache.discard('files:'+str(dict(await self._as_parent_params(path.parent), name=path.name)))
+    self._sbfs_cache.discard('file_info:'+str(path))
 
   async def unlink(self, path):
     info = await self._file_info(path)
     if info['type'] == 'directory':
       raise IsADirectoryError(str(path))
     await self._delete(info)
+    self._sbfs_cache.discard('file_info:'+str(path))
+    self._sbfs_cache.discard('file_details:'+str(info['id']))
 
   async def stop(self):
     await self._session_mgr.__aexit__(None, None, None)
@@ -246,7 +278,9 @@ class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
         name=path.name,
         type='folder',
       )) as req:
-        logger.debug(await req.read())
+        self._sbfs_cache['file_info:'+str(path)] = Result(val=await req.json())
+    self._sbfs_cache.discard('files:'+str(dict(await self._as_parent_params(path.parent))))
+    self._sbfs_cache.discard('files:'+str(dict(await self._as_parent_params(path.parent), name=path.name)))
 
   async def rmdir(self, path):
     n_parts = len(path.parts)
@@ -265,6 +299,10 @@ class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
       if info['type'] != 'folder':
         raise NotADirectoryError(path)
       await self._delete(info)
+      self._sbfs_cache.discard('file_info:'+str(path))
+      self._sbfs_cache.discard('files:'+str(dict(await self._as_parent_params(path.parent))))
+      self._sbfs_cache.discard('files:'+str(dict(await self._as_parent_params(path.parent), name=path.name)))
+      self._sbfs_cache.discard('file_details:'+str(info['id']))
 
   async def copy(self, src, dst):
     src_info = await self._file_info(src)
@@ -273,6 +311,9 @@ class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
       name=dst.name,
     )) as req:
       logger.debug(await req.read())
+    self._sbfs_cache.discard('file_info:'+str(dst))
+    self._sbfs_cache.discard('files:'+str(dict(await self._as_parent_params(dst.parent))))
+    self._sbfs_cache.discard('files:'+str(dict(await self._as_parent_params(dst.parent), name=dst.name)))
 
   async def rename(self, src, dst):
     src_info = await self._file_info(src)
@@ -281,3 +322,9 @@ class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
       name=dst.name,
     )) as req:
       logger.debug(await req.read())
+    self._sbfs_cache.discard('file_info:'+str(src))
+    self._sbfs_cache.discard('file_info:'+str(dst))
+    self._sbfs_cache.discard('files:'+str(dict(await self._as_parent_params(src.parent))))
+    self._sbfs_cache.discard('files:'+str(dict(await self._as_parent_params(src.parent), name=src.name)))
+    self._sbfs_cache.discard('files:'+str(dict(await self._as_parent_params(dst.parent))))
+    self._sbfs_cache.discard('files:'+str(dict(await self._as_parent_params(dst.parent), name=dst.name)))
