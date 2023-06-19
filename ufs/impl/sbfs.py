@@ -231,6 +231,11 @@ class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
       )) as req:
         logger.debug(await req.read())
     elif n_parts >= 4:
+      try:
+        info = await self.info(path)
+        raise FileExistsError(str(path))
+      except FileNotFoundError:
+        pass
       async with self._session.post(f"{self._api_endpoint}/v2/files", json=dict(
         await self._as_parent_params(path.parent),
         name=path.name,
