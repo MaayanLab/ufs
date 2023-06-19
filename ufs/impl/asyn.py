@@ -7,7 +7,9 @@ def ufs_thread(loop: asyncio.AbstractEventLoop, send: asyncio.PriorityQueue, rec
   while True:
     msg = asyncio.run_coroutine_threadsafe(recv.get(), loop).result()
     i, op, args, kwargs = msg
-    if op is None: break
+    if op is None:
+      recv.task_done()
+      break
     try:
       func = getattr(ufs, op)
       res = func(*args, **kwargs)
@@ -15,6 +17,7 @@ def ufs_thread(loop: asyncio.AbstractEventLoop, send: asyncio.PriorityQueue, rec
       asyncio.run_coroutine_threadsafe(send.put([i, None, err]), loop).result()
     else:
       asyncio.run_coroutine_threadsafe(send.put([i, res, None]), loop).result()
+    recv.task_done()
 
 class Async(AsyncUFS):
   def __init__(self, ufs: UFS):
@@ -39,9 +42,12 @@ class Async(AsyncUFS):
     await self._send.put([i, op, args, kwargs])
     while True:
       i_, ret, err = await self._recv.get()
-      if i == i_: break
+      if i == i_:
+        self._recv.task_done()
+        break
       # a different result came before ours, add it back to the queue and try again
       await self._recv.put([i_, ret, err])
+      self._recv.task_done()
     if err is not None: raise err
     else: return ret
 

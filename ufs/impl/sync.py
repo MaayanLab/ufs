@@ -8,7 +8,9 @@ async def async_ufs_proc(send: asyncio.PriorityQueue, recv: asyncio.PriorityQueu
   while True:
     msg = await recv.get()
     i, op, args, kwargs = msg
-    if op == None: break
+    if op == None:
+      recv.task_done()
+      break
     try:
       func = getattr(ufs, op)
       res = await func(*args, **kwargs)
@@ -16,6 +18,7 @@ async def async_ufs_proc(send: asyncio.PriorityQueue, recv: asyncio.PriorityQueu
       await send.put([i, None, err])
     else:
       await send.put([i, res, None])
+    recv.task_done()
 
 def event_loop_thread(loop, send: asyncio.PriorityQueue, recv: asyncio.PriorityQueue, ufs_spec):
   loop.run_until_complete(async_ufs_proc(send, recv, ufs_spec))
@@ -43,9 +46,12 @@ class Sync(UFS):
     asyncio.run_coroutine_threadsafe(self._send.put([i, op, args, kwargs]), self._loop).result()
     while True:
       i_, ret, err = asyncio.run_coroutine_threadsafe(self._recv.get(), self._loop).result()
-      if i == i_: break
+      if i == i_:
+        self._recv.task_done()
+        break
       # a different result came before ours, add it back to the queue and try again
       asyncio.run_coroutine_threadsafe(self._recv.put([i_, ret, err]), self._loop).result()
+      self._recv.task_done()
     if err is not None: raise err
     else: return ret
 

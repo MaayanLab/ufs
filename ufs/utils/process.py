@@ -40,8 +40,10 @@ def process_thread(queue: Queue):
     else:
       exc = NotImplementedError(type(proc))
   except exc: pass
+  queue.task_done()
   try:
     queue.get_nowait()
+    queue.task_done()
   except Empty:
     queue.put(exc)
     _t.interrupt_main()
@@ -59,7 +61,9 @@ def active_process(proc: mp.Process | mp_spawn.Process | Popen, *, terminate_sig
     yield
   except KeyboardInterrupt:
     try:
-      raise queue.get_nowait()
+      exc = queue.get_nowait()
+      queue.task_done()
+      raise exc
     except Empty:
       raise KeyboardInterrupt
   finally:
