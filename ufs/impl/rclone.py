@@ -4,13 +4,10 @@
 import sys
 import uuid
 import json
-import queue
 import socket
 import logging
 import requests
-import itertools
-import threading as t
-from ufs.spec import UFS
+from ufs.spec import UFS, DescriptorFromAtomicMixin, ReadableIterator
 from ufs.utils.pathlib import SafePurePosixPath
 from subprocess import Popen
 
@@ -24,44 +21,6 @@ def rclone_uri_from_path(path):
     return fs, None
   return fs+':', SafePurePosixPath('/'.join(parts))
 
-class QueueBufferedReader(queue.Queue):
-  def __init__(self, maxsize: int = 0) -> None:
-    super().__init__(maxsize)
-    self.buffer = b''
-  def read(self, amnt = -1):
-    while amnt == -1 or len(self.buffer) < amnt:
-      buf = self.get()
-      if buf is None: break
-      self.buffer += buf
-    if amnt == -1:
-      ret = self.buffer
-    else:
-      ret = self.buffer[:amnt]
-    self.buffer = self.buffer[len(ret):]
-    logger.info(f"read({amnt=}) -> {ret}")
-    return ret
-  def write(self, data: bytes):
-    self.put(data)
-
-class BufferedIteratorReader:
-  def __init__(self, reader) -> None:
-    self.buffer = b''
-    self.reader = reader
-  def read(self, amnt = -1):
-    while amnt == -1 or len(self.buffer) < amnt:
-      try:
-        buf = next(self.reader)
-      except StopIteration:
-        break
-      self.buffer += buf
-    if amnt == -1:
-      ret = self.buffer
-    else:
-      ret = self.buffer[:amnt]
-    self.buffer = self.buffer[len(ret):]
-    logger.info(f"read({amnt=}) -> {ret}")
-    return ret
-
 def rstrip_iter(it, rstrip):
   last = None
   for el in it:
@@ -70,12 +29,10 @@ def rstrip_iter(it, rstrip):
     last = el
   yield last.rstrip(rstrip)
 
-class RClone(UFS):
+class RClone(DescriptorFromAtomicMixin, UFS):
   def __init__(self, env: dict = {}):
     super().__init__()
     self._env = env
-    self._cfd = iter(itertools.count(start=5))
-    self._fds = {}
 
   @staticmethod
   def from_dict(*, env):
@@ -172,62 +129,34 @@ class RClone(UFS):
           # 'mtime': item['ModTime'],
         }
 
-  def open(self, path, mode, *, size_hint = None):
+  def cat(self, path):
     fs, path = rclone_uri_from_path(path)
     if not fs: raise PermissionError()
     if not path: raise PermissionError()
-    if '+' in mode:
-      raise NotImplementedError(mode)
-    if 'r' in mode:
-      req = requests.post(
-        f"http://{self._host}:{self._port}/core/command",
-        auth=(self._user, self._pass),
-        json=dict(
-          command='cat',
-          arg=json.dumps([fs + str(path)[1:]]),
-          returnType='STREAM_ONLY_STDOUT',
-        ),
-        stream=True,
-      )
-      if req.status_code != 200:
-        raise FileNotFoundError()
-      fd = next(self._cfd)
-      self._fds[fd] = dict(mode='r', fs=fs, path=path, reader=BufferedIteratorReader(rstrip_iter(req.iter_content(self.CHUNK_SIZE), b'{}\n')))
-    elif 'w' in mode:
-      fd = next(self._cfd)
-      pipe = QueueBufferedReader()
-      thread = t.Thread(
-        target=requests.post,
-        args=(f"http://{self._host}:{self._port}/operations/uploadfile",),
-        kwargs=dict(
-          auth=(self._user, self._pass),
-          params=dict(fs=fs, remote=str(path.parent)[1:]),
-          files={'file0': (path.name, pipe, 'application/octet-stream')},
-        ),
-      )
-      thread.start()
-      self._fds[fd] = dict(mode='w', fs=fs, path=path, thread=thread, pipe=pipe)
-    else:
-      raise NotImplementedError(mode)
-    return fd
-  def seek(self, fd, pos, whence = 0):
-    raise NotImplementedError()
-  def read(self, fd, amnt):
-    if self._fds[fd]['mode'] != 'r': raise NotImplementedError()
-    return self._fds[fd]['reader'].read(amnt)
-  def write(self, fd, data):
-    if self._fds[fd]['mode'] != 'w': raise NotImplementedError()
-    self._fds[fd]['pipe'].write(data)
-    return len(data)
-  def truncate(self, fd, length):
-    raise NotImplementedError()
-  def flush(self, fd):
-    pass
-  def close(self, fd):
-    descriptor = self._fds.pop(fd)
-    if descriptor['mode'] == 'w':
-      descriptor['pipe'].write(None)
-      descriptor['thread'].join()
+    req = requests.post(
+      f"http://{self._host}:{self._port}/core/command",
+      auth=(self._user, self._pass),
+      json=dict(
+        command='cat',
+        arg=json.dumps([fs + str(path)[1:]]),
+        returnType='STREAM_ONLY_STDOUT',
+      ),
+      stream=True,
+    )
+    if req.status_code != 200:
+      raise FileNotFoundError()
+    yield from rstrip_iter(req.iter_content(self.CHUNK_SIZE), b'{}\n')
+
+  def put(self, path, data, *, size_hint=None):
+    fs, path = rclone_uri_from_path(path)
+    if not fs: raise PermissionError()
+    if not path: raise PermissionError()
+    requests.post(
+      f"http://{self._host}:{self._port}/operations/uploadfile",
+      auth=(self._user, self._pass),
+      params=dict(fs=fs, remote=str(path.parent)[1:]),
+      files={'file0': (path.name, ReadableIterator(data), 'application/octet-stream')},
+    )
 
   def unlink(self, path):
     fs, path = rclone_uri_from_path(path)
