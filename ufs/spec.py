@@ -256,6 +256,7 @@ class QueuedAsyncIterator(asyncio.Queue):
 
 class AsyncDescriptorFromAtomicMixin:
   def __init__(self) -> None:
+    super().__init__()
     self._cfd = iter(it.count(start=5))
     self._fds = {}
 
