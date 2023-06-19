@@ -220,7 +220,7 @@ class AsyncAtomicFromDescriptorMixin:
 
 class ReadableAsyncIterator:
   def __init__(self, iterator: t.AsyncIterator[bytes]) -> None:
-    self.iterator = iter(iterator)
+    self.iterator = aiter(iterator)
     self.buffer = b''
     self.pos = 0
   async def read(self, amnt = -1):
@@ -296,8 +296,8 @@ class AsyncDescriptorFromAtomicMixin:
 
   async def flush(self, fd: int):
     descriptor = self._fds[fd]
-    if descriptor['mode'] != 'w': raise NotImplementedError()
-    return await descriptor['iterator'].flush()
+    if descriptor['mode'] == 'w':
+      await descriptor['iterator'].flush()
 
   async def close(self, fd: int):
     descriptor = self._fds.pop(fd)
