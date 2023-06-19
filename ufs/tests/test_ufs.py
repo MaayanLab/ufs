@@ -15,7 +15,6 @@ from ufs.utils.pathlib import SafePurePosixPath
   's3',
   'sbfs',
   'rclone-local',
-  'rclone-memory',
 ])
 def ufs(request):
   ''' Result in various UFS implementations
@@ -165,22 +164,6 @@ def ufs(request):
         RCLONE_CONFIG_LOCAL_TYPE='alias',
         RCLONE_CONFIG_LOCAL_REMOTE=str(tmp/'data'),
       ))), '/local'), Memory()) as ufs:
-        yield ufs
-  elif request.param == 'rclone-memory':
-    import pathlib
-    import tempfile
-    from ufs.impl.rclone import RClone
-    from ufs.impl.prefix import Prefix
-    from ufs.impl.writecache import Writecache
-    from ufs.impl.memory import Memory
-    with tempfile.TemporaryDirectory() as tmp:
-      tmp = pathlib.Path(tmp)
-      (tmp/'config').mkdir()
-      (tmp/'config'/'rclone.conf').touch()
-      with Writecache(Prefix(RClone(dict(
-        RCLONE_CONFIG_DIR=tmp,
-        RCLONE_CONFIG_MEMORY_TYPE='memory',
-      )), '/memory'), Memory()) as ufs:
         yield ufs
 
 def test_os(ufs: UFS):
