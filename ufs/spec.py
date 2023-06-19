@@ -110,8 +110,8 @@ class DescriptorFromAtomicMixin:
 
   def flush(self, fd: int):
     descriptor = self._fds[fd]
-    if descriptor['mode'] != 'w': raise NotImplementedError()
-    return descriptor['iterator'].flush()
+    if descriptor['mode'] == 'w':
+      descriptor['iterator'].flush()
 
   def close(self, fd: int):
     descriptor = self._fds.pop(fd)
