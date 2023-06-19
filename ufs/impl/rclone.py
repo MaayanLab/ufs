@@ -18,7 +18,7 @@ def rclone_uri_from_path(path):
     return None, None
   _, fs, *parts = path.parts
   if not parts:
-    return fs, None
+    return fs+':', None
   return fs+':', SafePurePosixPath('/'.join(parts))
 
 def rstrip_iter(it, rstrip):
@@ -78,6 +78,7 @@ class RClone(DescriptorFromAtomicMixin, UFS):
       ret = req.json()
       return ret['remotes']
     else:
+      if not path: path = ''
       req = requests.post(
         f"http://{self._host}:{self._port}/operations/list",
         auth=(self._user, self._pass),
@@ -144,6 +145,7 @@ class RClone(DescriptorFromAtomicMixin, UFS):
       stream=True,
     )
     if req.status_code != 200:
+      logger.debug(req.text)
       raise FileNotFoundError()
     yield from rstrip_iter(req.iter_content(self.CHUNK_SIZE), b'{}\n')
 
@@ -171,13 +173,20 @@ class RClone(DescriptorFromAtomicMixin, UFS):
       raise FileNotFoundError()
 
   def mkdir(self, path):
-    fs, path = rclone_uri_from_path(path)
-    if not fs: raise PermissionError()
-    if not path: raise PermissionError()
+    fs, remote = rclone_uri_from_path(path)
+    if not fs:
+      raise FileExistsError()
+    if not remote:
+      try:
+        self.info(path)
+      except FileNotFoundError:
+        raise PermissionError()
+      else:
+        raise FileExistsError()
     req = requests.post(
       f"http://{self._host}:{self._port}/operations/mkdir",
       auth=(self._user, self._pass),
-      params=dict(fs=fs, remote=str(path)[1:]),
+      params=dict(fs=fs, remote=str(remote)[1:]),
     )
     ret = req.json()
 
