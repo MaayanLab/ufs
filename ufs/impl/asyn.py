@@ -42,12 +42,11 @@ class Async(AsyncUFS):
     await self._send.put([i, op, args, kwargs])
     while True:
       i_, ret, err = await self._recv.get()
+      self._recv.task_done()
       if i == i_:
-        self._recv.task_done()
         break
       # a different result came before ours, add it back to the queue and try again
       await self._recv.put([i_, ret, err])
-      self._recv.task_done()
     if err is not None: raise err
     else: return ret
 

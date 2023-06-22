@@ -46,12 +46,11 @@ class Sync(UFS):
     asyncio.run_coroutine_threadsafe(self._send.put([i, op, args, kwargs]), self._loop).result()
     while True:
       i_, ret, err = asyncio.run_coroutine_threadsafe(self._recv.get(), self._loop).result()
+      self._recv.task_done()
       if i == i_:
-        self._recv.task_done()
         break
       # a different result came before ours, add it back to the queue and try again
       asyncio.run_coroutine_threadsafe(self._recv.put([i_, ret, err]), self._loop).result()
-      self._recv.task_done()
     if err is not None: raise err
     else: return ret
 
