@@ -4,3 +4,4 @@ build-backend = "pbr.build"
 
 [project]
 name = "ufs"
+version = "0.1.0"
