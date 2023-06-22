@@ -5,16 +5,9 @@ from datetime import datetime
 from ufs.spec import AsyncUFS, AsyncDescriptorFromAtomicMixin
 from ufs.utils.pathlib import SafePurePosixPath_
 from ufs.utils.cache import TTLCacheStore, Result
+from ufs.utils.one import one
 
 logger = logging.getLogger(__name__)
-
-def one(items):
-  it = iter(items)
-  try: item = next(it)
-  except StopIteration: raise
-  try: next(it)
-  except StopIteration: return item
-  else: raise RuntimeError('Expected one, got multiple')
 
 class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
   CHUNK_SIZE = 8192
