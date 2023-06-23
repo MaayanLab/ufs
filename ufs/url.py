@@ -93,6 +93,16 @@ def ufs_from_url(url: str, protos=protos):
   return protos[url_parsed['proto']](url_parsed)
 
 @contextlib.contextmanager
+def upath_from_url(url: str, protos=protos):
+  '''
+  Usage:
+  ufs = ufs_from_url('s3://mybucket/myprefix/')
+  '''
+  from ufs.pathlib import UPath
+  with ufs_from_url(url, protos=protos) as ufs:
+    yield UPath(ufs)
+
+@contextlib.contextmanager
 def open_from_url(url: str, mode='r', protos=protos):
   '''
   Usage:
