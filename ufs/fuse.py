@@ -40,7 +40,7 @@ class FUSEOps(LoggingMixIn, Operations):
       return self._os.fsync(fh)
 
   def getattr(self, path, fh=None):
-    st = self._os.lstat(path)
+    st = self._os.stat(path)
     return dict((key, getattr(st, key)) for key in (
       'st_atime', 'st_ctime', 'st_gid', 'st_mode', 'st_mtime',
       'st_nlink', 'st_size', 'st_uid'))

@@ -106,7 +106,7 @@ class UOS:
   ) -> None:
     self._ufs.flush(fd)
 
-  def lstat(
+  def stat(
     self,
     path: StrOrBytesPath,
     *,
