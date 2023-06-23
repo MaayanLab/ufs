@@ -4,19 +4,21 @@ from ufs.spec import DescriptorFromAtomicMixin, UFS, QueuedIterator, ReadableIte
 from ufs.utils.one import one
 
 class FTP(DescriptorFromAtomicMixin, UFS):
-  def __init__(self, host: str, user = '', passwd = '', tls = False) -> None:
+  def __init__(self, host: str, user = '', passwd = '', port = 21, tls = False) -> None:
     super().__init__()
     self._host = host
     self._user = user
     self._passwd = passwd
+    self._port = port
     self._tls = tls
 
   @staticmethod
-  def from_dict(*, host, user, passwd, tls):
+  def from_dict(*, host, user, passwd, port, tls):
     return FTP(
       host=host,
       user=user,
       passwd=passwd,
+      port=port,
       tls=tls,
     )
 
@@ -25,12 +27,14 @@ class FTP(DescriptorFromAtomicMixin, UFS):
       host=self._host,
       user=self._user,
       passwd=self._passwd,
+      port=self._port,
       tls=self._tls,
     )
 
   def start(self):
     if not hasattr(self, '_ftp'):
-      self._ftp = ftplib.FTP_TLS(self._host) if self._tls else ftplib.FTP(self._host)
+      self._ftp = ftplib.FTP_TLS() if self._tls else ftplib.FTP()
+      self._ftp.connect(self._host, self._port)
       self._ftp.login(self._user, self._passwd)
   
   def stop(self):
