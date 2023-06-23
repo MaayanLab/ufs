@@ -172,8 +172,10 @@ def ufs(request):
     from ufs.impl.ftp import FTP
     from ufs.impl.prefix import Prefix
     from ufs.shutil import rmtree
-    twistd = shutil.which('twistd')
-    if twistd is None: pytest.skip('twistd binary not available')
+    try:
+      import pyftpdlib
+    except ImportError:
+      pytest.skip('pyftpdlib not available')
     else:
       import os
       import sys
@@ -184,6 +186,8 @@ def ufs(request):
       from urllib.request import Request, urlopen
       from subprocess import Popen
       from ufs.impl.ftp import FTP
+      from ufs.impl.memory import Memory
+      from ufs.impl.writecache import Writecache
       from ufs.utils.polling import wait_for, safe_predicate
       from ufs.utils.process import active_process
       from ufs.shutil import rmtree
@@ -200,7 +204,7 @@ def ufs(request):
           host, port = s.getsockname()
         # actually run ftp server
         with active_process(Popen(
-          [twistd, '--nodaemon', '--logfile=-', 'ftp', '--port', str(port), '--auth', f"memory:{ftp_user}:{ftp_passwd}", '--root', tmp],
+          [sys.executable, '-m', 'pyftpdlib', f"--port={port}", f"--username={ftp_user}", f"--password={ftp_passwd}", f"--directory={tmp}", '--write'],
           env=os.environ,
           stderr=sys.stderr,
           stdout=sys.stdout,
@@ -208,12 +212,12 @@ def ufs(request):
           # wait for ftp to be running & ready
           wait_for(functools.partial(safe_predicate, lambda: nc_z(host, port)))
           # create an fsspec connection to the minio server
-          with FTP(
+          with Writecache(FTP(
             host=host,
             user=ftp_user,
             passwd=ftp_passwd,
             port=port,
-          ) as ufs:
+          ), Memory()) as ufs:
             yield ufs
 
 def test_os(ufs: UFS):
