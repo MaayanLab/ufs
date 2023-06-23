@@ -15,6 +15,7 @@ from ufs.utils.pathlib import SafePurePosixPath
   's3',
   'sbfs',
   'rclone-local',
+  'ftp',
 ])
 def ufs(request):
   ''' Result in various UFS implementations
@@ -165,6 +166,55 @@ def ufs(request):
         RCLONE_CONFIG_LOCAL_REMOTE=str(tmp/'data'),
       ))), '/local'), Memory()) as ufs:
         yield ufs
+  elif request.param == 'ftp':
+    import uuid
+    import shutil
+    from ufs.impl.ftp import FTP
+    from ufs.impl.prefix import Prefix
+    from ufs.shutil import rmtree
+    twistd = shutil.which('twistd')
+    if twistd is None: pytest.skip('twistd binary not available')
+    else:
+      import os
+      import sys
+      import uuid
+      import socket
+      import tempfile
+      import functools
+      from urllib.request import Request, urlopen
+      from subprocess import Popen
+      from ufs.impl.ftp import FTP
+      from ufs.utils.polling import wait_for, safe_predicate
+      from ufs.utils.process import active_process
+      from ufs.shutil import rmtree
+      def nc_z(host, port, timeout=1):
+        with socket.create_connection((host, port), timeout=timeout):
+          return True
+      # get a temporary directory to store ftp files in
+      with tempfile.TemporaryDirectory() as tmp:
+        # generate credentials for ftp
+        ftp_user, ftp_passwd = str(uuid.uuid4()), str(uuid.uuid4())
+        # find a free port to run ftp
+        with socket.socket() as s:
+          s.bind(('', 0))
+          host, port = s.getsockname()
+        # actually run ftp server
+        with active_process(Popen(
+          [twistd, '--nodaemon', '--logfile=-', 'ftp', '--port', str(port), '--auth', f"memory:{ftp_user}:{ftp_passwd}", '--root', tmp],
+          env=os.environ,
+          stderr=sys.stderr,
+          stdout=sys.stdout,
+        )):
+          # wait for ftp to be running & ready
+          wait_for(functools.partial(safe_predicate, lambda: nc_z(host, port)))
+          # create an fsspec connection to the minio server
+          with FTP(
+            host=host,
+            user=ftp_user,
+            passwd=ftp_passwd,
+            port=port,
+          ) as ufs:
+            yield ufs
 
 def test_os(ufs: UFS):
   from ufs.os import UOS
