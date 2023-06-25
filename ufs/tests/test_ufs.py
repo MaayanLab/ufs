@@ -228,7 +228,7 @@ def test_os(ufs: UFS):
   assert os.listdir('/') == ['test']
   os.rmdir('/test')
   assert os.listdir('/') == []
-  with pytest.raises(FileNotFoundError): os.lstat('/test')
+  with pytest.raises(FileNotFoundError): os.stat('/test')
 
 def test_map(ufs: UFS):
   from ufs.map import UMap
