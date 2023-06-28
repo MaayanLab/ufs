@@ -22,7 +22,7 @@ class SafePurePosixPath_:
     sp = subpath if isinstance(subpath, pathlib.PurePosixPath) or isinstance(subpath, SafePurePosixPath_) else pathlib.PurePosixPath(str(subpath))
     for part in sp.parts:
       if part == '..': p = p.parent
-      elif part in ['/', '.', '']: pass
+      elif part in ['//', '/', '.', '']: pass
       else: p = p / part
     return SafePurePosixPath_(p)
   def relative_to(self, parentpath: 'PathLike'):
