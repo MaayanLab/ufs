@@ -9,6 +9,7 @@ from ufs.utils.pathlib import SafePurePosixPath
   'process-memory',
   'local-memory-writecache',
   'memory-async-sync',
+  'tempdir',
   'fsspec-local',
   'fsspec-memory',
   'dircache-local',
@@ -50,6 +51,10 @@ def ufs(request):
     from ufs.impl.asyn import Async
     from ufs.impl.memory import Memory
     with Sync(Async(Memory())) as ufs:
+      yield ufs
+  elif request.param == 'tempdir':
+    from ufs.impl.tempdir import TemporaryDirectory
+    with TemporaryDirectory() as ufs:
       yield ufs
   elif request.param == 'fsspec-local':
     import tempfile
