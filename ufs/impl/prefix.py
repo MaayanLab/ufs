@@ -5,8 +5,6 @@ Usage:
 ufs = Prefix(UFS(), '/some/subpath/')
 '''
 
-import os
-import errno
 import logging
 from ufs.spec import UFS
 from ufs.utils.pathlib import SafePurePosixPath, PathLike
