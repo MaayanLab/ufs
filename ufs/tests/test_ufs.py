@@ -228,42 +228,30 @@ def ufs(request):
     else:
       import os
       import sys
-      import json
       import socket
       import functools
       from subprocess import Popen
-      from ufs.utils.process import active_process
-      from ufs.utils.polling import wait_for, safe_predicate
       from ufs.impl.memory import Memory
       from ufs.impl.sftp import SFTP
-      def nc_z(host, port, timeout=1):
-        with socket.create_connection((host, port), timeout=timeout):
-          return True
+      from ufs.access.sftp import serve_ufs_via_sftp
       # find a free port to run sftp
       with socket.socket() as s:
         s.bind(('', 0))
         host, port = s.getsockname()
       username, password = 'admin', 'admin'
       with Memory() as ufs:
-        opts = {
-          'ufs': ufs.to_dict(),
-          'host': host,
-          'port': port,
-          'username': username,
-          'password': password,
-        }
-        with active_process(Popen(
-          [sys.executable, '-m', 'ufs.access.sftp', json.dumps(opts)],
-          env=os.environ,
-          stderr=sys.stderr,
-          stdout=sys.stdout,
-        )):
-          wait_for(functools.partial(safe_predicate, lambda: nc_z(host, port)))
+        with serve_ufs_via_sftp(
+          ufs=ufs,
+          host=host,
+          port=port,
+          username=username,
+          password=password,
+        ):
           with SFTP(
-            host=opts['host'],
-            port=opts['port'],
-            username=opts['username'],
-            password=opts['password'],
+            host=host,
+            port=port,
+            username=username,
+            password=password,
           ) as ufs:
             yield ufs
 

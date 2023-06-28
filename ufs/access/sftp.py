@@ -1,6 +1,9 @@
 import os
 import errno
 import paramiko, paramiko.common
+import pathlib
+import functools
+import contextlib
 import logging
 import traceback
 
@@ -183,36 +186,62 @@ class USFTPServer(paramiko.SFTPServerInterface):
   def readlink(self, path) -> str | int:
     return paramiko.SFTPServer.convert_errno(errno.ENOENT)
 
-def serve_ufs_via_sftp(ufs: UFS, host: str, port: int, username: str, password: str = None, keyfile: str = None, BACKLOG = 10):
-  import time, socket, pathlib
+def ufs_via_sftp(ufs: dict, host: str, port: int, username: str, password: str = None, keyfile: str = None, BACKLOG = 10):
+  import socket
   if keyfile is None: keyfile = str(pathlib.Path('~/.ssh/id_rsa').expanduser())
-  server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-  server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
-  server_socket.bind((host, port))
-  server_socket.listen(BACKLOG)
-  server = USSHServer(ufs, username, password)
-  connections = []
+  with UFS.from_dict(**ufs) as ufs:
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
+    server_socket.bind((host, port))
+    server_socket.listen(BACKLOG)
+    server = USSHServer(ufs, username, password)
+    connections = []
 
-  while True:
-    conn, addr = server_socket.accept()
-    host_key = paramiko.RSAKey.from_private_key_file(keyfile)
-    transport = paramiko.Transport(conn)
-    transport.add_server_key(host_key)
-    transport.set_subsystem_handler(
-      'sftp', paramiko.SFTPServer, USFTPServer
-    )
-    try:
-      transport.start_server(server=server)
-      channel = transport.accept()
-      connections.append((conn, addr, transport, channel))
-    except KeyboardInterrupt:
-      raise
-    except:
-      logger.error(traceback.print_exc())
-      continue
+    while True:
+      conn, addr = server_socket.accept()
+      host_key = paramiko.RSAKey.from_private_key_file(keyfile)
+      transport = paramiko.Transport(conn)
+      transport.add_server_key(host_key)
+      transport.set_subsystem_handler(
+        'sftp', paramiko.SFTPServer, USFTPServer
+      )
+      try:
+        transport.start_server(server=server)
+        channel = transport.accept()
+        connections.append((conn, addr, transport, channel))
+      except KeyboardInterrupt:
+        raise
+      except:
+        logger.error(traceback.print_exc())
+        continue
+
+def nc_z(host: str, port: int, timeout: int = 1):
+  import socket
+  with socket.create_connection((host, port), timeout=timeout):
+    return True
+
+@contextlib.contextmanager
+def serve_ufs_via_sftp(ufs: UFS, host: str, port: int, username: str, password: str = None, keyfile: str = None, BACKLOG = 10):
+  import multiprocessing as mp
+  from ufs.utils.process import active_process
+  from ufs.utils.polling import wait_for, safe_predicate
+  mp_spawn = mp.get_context('spawn')
+  with active_process(mp_spawn.Process(
+    target=ufs_via_sftp,
+    kwargs=dict(
+      ufs=ufs.to_dict(),
+      host=host,
+      port=port,
+      username=username,
+      password=password,
+      keyfile=keyfile,
+      BACKLOG=BACKLOG,
+    ),
+  )):
+    wait_for(functools.partial(safe_predicate, lambda: nc_z(host, port)))
+    yield
 
 if __name__ == '__main__':
   import sys, json
   kwargs = json.loads(sys.argv[1])
-  ufs = UFS.from_dict(**kwargs.pop('ufs'))
-  serve_ufs_via_sftp(ufs=ufs, **kwargs)
+  ufs_via_sftp(**kwargs)
