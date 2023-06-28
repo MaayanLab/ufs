@@ -53,7 +53,6 @@ class USFTPHandle(paramiko.SFTPHandle):
       self.server._uos.lseek(self.fd, offset)
       return self.server._uos.read(self.fd, length)
     except OSError as e:
-      logger.warning(traceback.format_exc())
       return paramiko.SFTPServer.convert_errno(e.errno)
     except:
       logger.error(traceback.format_exc())
@@ -65,7 +64,6 @@ class USFTPHandle(paramiko.SFTPHandle):
       write_ret = self.server._uos.write(self.fd, data)
       logger.error(f"-> {write_ret}")
     except OSError as e:
-      logger.warning(traceback.format_exc())
       return paramiko.SFTPServer.convert_errno(e.errno)
     except:
       logger.error(traceback.format_exc())
@@ -79,7 +77,6 @@ class USFTPHandle(paramiko.SFTPHandle):
         pathname(self.path),
       )
     except OSError as e:
-      logger.warning(traceback.format_exc())
       return paramiko.SFTPServer.convert_errno(e.errno)
     except:
       logger.error(traceback.format_exc())
@@ -105,7 +102,6 @@ class USFTPServer(paramiko.SFTPServerInterface):
       logger.error(f"list_folder {ret=}")
       return ret
     except OSError as e:
-      logger.warning(traceback.format_exc())
       return paramiko.SFTPServer.convert_errno(e.errno)
     except:
       logger.error(traceback.format_exc())
@@ -118,7 +114,6 @@ class USFTPServer(paramiko.SFTPServerInterface):
         pathname(path),
       )
     except OSError as e:
-      logger.warning(traceback.format_exc())
       return paramiko.SFTPServer.convert_errno(e.errno)
     except:
       logger.error(traceback.format_exc())
@@ -133,7 +128,6 @@ class USFTPServer(paramiko.SFTPServerInterface):
       mode = getattr(attr, 'st_mode', None) or 0o666
       fd = self._server._uos.open(path, flags, mode)
     except OSError as e:
-      logger.warning(traceback.format_exc())
       return paramiko.SFTPServer.convert_errno(e.errno)
     except:
       logger.error(traceback.format_exc())
@@ -154,7 +148,6 @@ class USFTPServer(paramiko.SFTPServerInterface):
     try:
       self._server._uos.rename(oldpath, newpath)
     except OSError as e:
-      logger.warning(traceback.format_exc())
       return paramiko.SFTPServer.convert_errno(e.errno)
     except:
       logger.error(traceback.format_exc())
@@ -165,7 +158,6 @@ class USFTPServer(paramiko.SFTPServerInterface):
     try:
       self._server._uos.mkdir(path)
     except OSError as e:
-      logger.warning(traceback.format_exc())
       return paramiko.SFTPServer.convert_errno(e.errno)
     except:
       logger.error(traceback.format_exc())
@@ -176,7 +168,6 @@ class USFTPServer(paramiko.SFTPServerInterface):
     try:
       self._server._uos.rmdir(path)
     except OSError as e:
-      logger.warning(traceback.format_exc())
       return paramiko.SFTPServer.convert_errno(e.errno)
     except:
       logger.error(traceback.format_exc())
@@ -217,7 +208,7 @@ def serve_ufs_via_sftp(ufs: UFS, host: str, port: int, username: str, password: 
     except KeyboardInterrupt:
       raise
     except:
-      logger.warning(traceback.print_exc())
+      logger.error(traceback.print_exc())
       continue
 
 if __name__ == '__main__':
