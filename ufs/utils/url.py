@@ -30,10 +30,10 @@ class NetlocParsed(t.TypedDict):
   netloc: str
   path: str
 
-netloc_expr = re.compile(r'((?P<username>[^:]+)?(P<password>[^@]+)?@)?(?P<host>[^:/]+)(:(?P<port>\d+))?')
+netloc_expr = re.compile(r'^((?P<username>[^:@]+)(:(?P<password>[^@]+))?@)?(?P<host>[^@:]+)(:(?P<port>\d+))?$')
 
 def parse_netloc(url_parsed: URLParsed) -> NetlocParsed:
-  netloc, _, path = url_parsed['path'].partition('/')
+  netloc, sep, path = url_parsed['path'].partition('/')
   m = netloc_expr.match(netloc)
   if not m: raise RuntimeError(f"Invalid netloc: {netloc}")
   netloc_parsed = m.groupdict()
@@ -41,7 +41,7 @@ def parse_netloc(url_parsed: URLParsed) -> NetlocParsed:
     netloc_parsed,
     netloc=netloc,
     port=int(netloc_parsed['port']) if netloc_parsed.get('port') else None,
-    path='/'+(path or ''),
+    path=(sep or '') + (path or ''),
   )
 
 
