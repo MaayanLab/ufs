@@ -200,7 +200,7 @@ class UOS:
     self,
     __fd: int,
     __position: int,
-    __how: int,
+    __how: int = 0,
     /
   ) -> int:
     return self._ufs.seek(__fd, __position, __how)
