@@ -2,7 +2,7 @@ import pathlib
 import typing as t
 
 class SafePurePosixPath_:
-  def __init__(self, path: str | pathlib.PurePosixPath = pathlib.PurePosixPath('/')):
+  def __init__(self, path: pathlib.PurePosixPath = pathlib.PurePosixPath('/')):
     self._path = path
   def __reduce__(self):
     return (self.__class__, (self._path,),)
@@ -37,12 +37,14 @@ class SafePurePosixPath_:
   def __repr__(self) -> str:
     return f"SafePurePosixPath({repr(str(self._path))})"
 
-PathLike: t.TypeAlias = str | pathlib.PurePosixPath | SafePurePosixPath_
+PathLike: t.TypeAlias =  bytes | str | pathlib.PurePosixPath | SafePurePosixPath_
 
 def SafePurePosixPath(path: PathLike) -> SafePurePosixPath_:
   ''' This ensures the path will always be /something
   It's not possible to go above the parent, // or /./ does nothing, etc..
   '''
+  if isinstance(path, bytes):
+    path = str(path)
   if isinstance(path, SafePurePosixPath_):
     return path
   return SafePurePosixPath_() / path
