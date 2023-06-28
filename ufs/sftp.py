@@ -115,7 +115,7 @@ class USFTPServer(paramiko.SFTPServerInterface):
     try:
       return paramiko.SFTPAttributes.from_stat(
         self._server._uos.stat(path),
-        pathname(self.path),
+        pathname(path),
       )
     except OSError as e:
       logger.warning(traceback.format_exc())
