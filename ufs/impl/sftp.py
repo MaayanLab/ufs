@@ -69,7 +69,8 @@ class SFTP(UFS):
   def read(self, fd, amnt):
     return self._fds[fd].read(amnt)
   def write(self, fd, data: bytes):
-    return self._fds[fd].write(data)
+    self._fds[fd].write(data)
+    return len(data)
   def truncate(self, fd, length):
     self._fds[fd].truncate(length)
   def flush(self, fd):
