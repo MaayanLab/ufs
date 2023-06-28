@@ -16,6 +16,7 @@ from ufs.utils.pathlib import SafePurePosixPath
   'sbfs',
   'rclone-local',
   'ftp',
+  'sftp',
 ])
 def ufs(request):
   ''' Result in various UFS implementations
@@ -218,6 +219,52 @@ def ufs(request):
             passwd=ftp_passwd,
             port=port,
           ), Memory()) as ufs:
+            yield ufs
+  elif request.param == 'sftp':
+    try:
+      import paramiko
+    except ImportError:
+      pytest.skip('paramiko not available')
+    else:
+      import os
+      import sys
+      import json
+      import socket
+      import functools
+      from subprocess import Popen
+      from ufs.utils.process import active_process
+      from ufs.utils.polling import wait_for, safe_predicate
+      from ufs.impl.memory import Memory
+      from ufs.impl.sftp import SFTP
+      def nc_z(host, port, timeout=1):
+        with socket.create_connection((host, port), timeout=timeout):
+          return True
+      # find a free port to run sftp
+      with socket.socket() as s:
+        s.bind(('', 0))
+        host, port = s.getsockname()
+      username, password = 'admin', 'admin'
+      with Memory() as ufs:
+        opts = {
+          'ufs': ufs.to_dict(),
+          'host': host,
+          'port': port,
+          'username': username,
+          'password': password,
+        }
+        with active_process(Popen(
+          [sys.executable, '-m', 'ufs.sftp', json.dumps(opts)],
+          env=os.environ,
+          stderr=sys.stderr,
+          stdout=sys.stdout,
+        )):
+          wait_for(functools.partial(safe_predicate, lambda: nc_z(host, port)))
+          with SFTP(
+            host=opts['host'],
+            port=opts['port'],
+            username=opts['username'],
+            password=opts['password'],
+          ) as ufs:
             yield ufs
 
 def test_os(ufs: UFS):
