@@ -171,10 +171,10 @@ class UFS:
     pass
 
   def cat(self, path: SafePurePosixPath_) -> t.Iterator[bytes]:
-    raise NotImplementedError()
+    yield from AtomicFromDescriptorMixin.cat(self, path)
 
   def put(self, path: SafePurePosixPath_, data: t.Iterator[bytes], *, size_hint: int = None):
-    raise NotImplementedError()
+    AtomicFromDescriptorMixin.put(self, path, data, size_hint=size_hint)
 
   # fallback
   def copy(self, src: SafePurePosixPath_, dst: SafePurePosixPath_):
@@ -343,10 +343,11 @@ class AsyncUFS:
     raise NotImplementedError()
 
   async def cat(self, path: SafePurePosixPath_) -> t.AsyncIterator[bytes]:
-    raise NotImplementedError()
+    async for chunk in AsyncAtomicFromDescriptorMixin.cat(self, path):
+      yield chunk
 
   async def put(self, path: SafePurePosixPath_, data: t.AsyncIterator[bytes], *, size_hint: int = None):
-    raise NotImplementedError()
+    await AsyncAtomicFromDescriptorMixin.put(self, path, data, size_hint=size_hint)
 
   # optional
   async def mkdir(self, path: SafePurePosixPath_):
