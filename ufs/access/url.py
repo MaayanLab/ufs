@@ -22,6 +22,11 @@ def proto_memory(url):
   from ufs.impl.prefix import Prefix
   return Prefix(Memory(), url['path'])
 
+@register_proto_handler('tmp')
+def proto_tmp(url):
+  from ufs.impl.tempdir import TemporaryDirectory
+  return TemporaryDirectory()
+
 @register_proto_handler('rclone')
 def proto_rclone(url):
   from ufs.impl.rclone import RClone
