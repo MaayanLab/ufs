@@ -39,7 +39,7 @@ def sftp_server(ufs: UFS):
       'password': password,
     }
     with active_process(Popen(
-      [sys.executable, '-m', 'ufs.sftp', json.dumps(opts)],
+      [sys.executable, '-m', 'ufs.access.sftp', json.dumps(opts)],
       env=os.environ,
       stderr=sys.stderr,
       stdout=sys.stdout,

@@ -6,7 +6,7 @@ from ufs.spec import UFS
 from ufs.impl.local import Local
 from ufs.impl.prefix import Prefix
 from ufs.utils.pathlib import SafePurePosixPath
-from ufs.shutil import walk, copytree, rmtree
+from ufs.access.shutil import walk, copytree, rmtree
 
 @contextlib.contextmanager
 def ffuse_mount(ufs: UFS, mount_dir: str = None):

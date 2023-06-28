@@ -6,7 +6,7 @@ import logging
 import pathlib
 import contextlib
 from ufs.spec import UFS
-from ufs.os import UOS
+from ufs.access.os import UOS
 from fuse import LoggingMixIn, Operations, FuseOSError
 
 logger = logging.getLogger(__name__)

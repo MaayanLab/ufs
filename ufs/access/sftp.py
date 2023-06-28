@@ -4,7 +4,7 @@ import paramiko, paramiko.common
 import logging
 import traceback
 
-from ufs.os import UOS
+from ufs.access.os import UOS
 from ufs.spec import UFS
 from ufs.utils.pathlib import pathname
 

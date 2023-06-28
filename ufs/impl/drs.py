@@ -75,7 +75,7 @@ class DRS(DescriptorFromAtomicMixin, UFS):
           access_url['url'] += f"#?headers={quote(json.dumps(access_url))}"
       # simply attempt to fetch from the access_url using ufs_from_url
       #  this supports various providers include http, ftp, and s3
-      from ufs.url import ufs_from_url
+      from ufs.access.url import ufs_from_url
       try:
         with ufs_from_url(access_url['url']) as ufs:
           yield from ufs.cat(access_url['url'])

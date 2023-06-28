@@ -1,6 +1,6 @@
 import pytest
 from ufs.spec import UFS
-from ufs.pathlib import UPath
+from ufs.access.pathlib import UPath
 from ufs.utils.pathlib import SafePurePosixPath
 
 @pytest.fixture(params=[
@@ -87,7 +87,7 @@ def ufs(request):
       from ufs.impl.s3 import S3
       from ufs.utils.polling import wait_for, safe_predicate
       from ufs.utils.process import active_process
-      from ufs.shutil import rmtree
+      from ufs.access.shutil import rmtree
       # get a temporary directory to store s3 files in
       with tempfile.TemporaryDirectory() as tmp:
         # generate credentials for minio
@@ -132,7 +132,7 @@ def ufs(request):
     from ufs.impl.prefix import Prefix
     from ufs.impl.memory import Memory
     from ufs.impl.writecache import Writecache
-    from ufs.shutil import rmtree
+    from ufs.access.shutil import rmtree
     try:
       with Writecache(
         Prefix(
@@ -172,7 +172,7 @@ def ufs(request):
     import shutil
     from ufs.impl.ftp import FTP
     from ufs.impl.prefix import Prefix
-    from ufs.shutil import rmtree
+    from ufs.access.shutil import rmtree
     try:
       import pyftpdlib
     except ImportError:
@@ -191,7 +191,7 @@ def ufs(request):
       from ufs.impl.writecache import Writecache
       from ufs.utils.polling import wait_for, safe_predicate
       from ufs.utils.process import active_process
-      from ufs.shutil import rmtree
+      from ufs.access.shutil import rmtree
       def nc_z(host, port, timeout=1):
         with socket.create_connection((host, port), timeout=timeout):
           return True
@@ -253,7 +253,7 @@ def ufs(request):
           'password': password,
         }
         with active_process(Popen(
-          [sys.executable, '-m', 'ufs.sftp', json.dumps(opts)],
+          [sys.executable, '-m', 'ufs.access.sftp', json.dumps(opts)],
           env=os.environ,
           stderr=sys.stderr,
           stdout=sys.stdout,
@@ -268,7 +268,7 @@ def ufs(request):
             yield ufs
 
 def test_os(ufs: UFS):
-  from ufs.os import UOS
+  from ufs.access.os import UOS
   os = UOS(ufs)
   assert os.access('/', 511)
   os.mkdir('/test')
@@ -278,7 +278,7 @@ def test_os(ufs: UFS):
   with pytest.raises(FileNotFoundError): os.stat('/test')
 
 def test_map(ufs: UFS):
-  from ufs.map import UMap
+  from ufs.access.map import UMap
   M = UMap(ufs)
   M['a'] = 'b'
   M['c'] = {
@@ -301,13 +301,13 @@ def path(request, ufs):
     upath.mkdir()
     yield upath
   elif request.param == 'fuse':
-    from ufs.fuse import fuse_mount
+    from ufs.access.fuse import fuse_mount
     with fuse_mount(ufs) as mount_dir:
       mount_dir = mount_dir / 'fuse'
       mount_dir.mkdir()
       yield mount_dir
   elif request.param == 'ffuse':
-    from ufs.ffuse import ffuse_mount
+    from ufs.access.ffuse import ffuse_mount
     with ffuse_mount(ufs) as mount_dir:
       mount_dir = mount_dir / 'ffuse'
       mount_dir.mkdir()
