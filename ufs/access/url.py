@@ -74,6 +74,22 @@ def proto_http(url):
     netloc_parsed['path']
   )
 
+@register_proto_handler('sftp')
+def proto_sftp(url):
+  from ufs.impl.sftp import SFTP
+  from ufs.impl.prefix import Prefix
+  netloc_parsed = parse_netloc(url)
+  return Prefix(
+    SFTP(
+      host=netloc_parsed['host'],
+      port=netloc_parsed.get('port') or 22,
+      username=netloc_parsed.get('username'),
+      password=netloc_parsed.get('password'),
+      **parse_fragment_qs(url)
+    ),
+    netloc_parsed['path']
+  )
+
 @register_proto_handler('drs')
 def proto_drs(url):
   from ufs.impl.drs import DRS
