@@ -71,7 +71,7 @@ class TemporaryDirectory(UFS):
 
   def stop(self):
     if hasattr(self, '_tmpdir'):
-      from ufs.access import shutil
-      shutil.rmtree(self._ufs, self._tmpdir)
+      from ufs.access.shutil import rmtree
+      rmtree(self._ufs, self._tmpdir)
       self._ufs.stop()
       del self._tmpdir

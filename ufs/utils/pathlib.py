@@ -80,3 +80,14 @@ def coerce_pathlike(func: t.Callable):
     for argname, argtype in func.__annotations__.items()
   })
   return wrapper
+
+def rmtree(P: pathlib.Path):
+  ''' This doesn't exist in normal pathlib but comes in handy
+  '''
+  Q = [(P, True)] + [(path, False) for path in P.iterdir()]
+  while Q:
+    path, empty = Q.pop()
+    if path.is_file(): path.unlink()
+    elif path.is_dir():
+      if empty: path.rmdir()
+      else: Q += [(path, True)] + [(p, False) for p in path.iterdir()]

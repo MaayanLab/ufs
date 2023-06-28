@@ -4,7 +4,8 @@
 import typing as t
 from collections.abc import Mapping, MutableMapping
 from ufs.spec import UFS
-from ufs.access.pathlib import UPath, rmtree
+from ufs.access.pathlib import UPath
+from ufs.utils.pathlib import rmtree
 
 class UMap(MutableMapping):
   def __init__(self, ufs: UFS = None, upath: UPath = None):
