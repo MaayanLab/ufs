@@ -5,29 +5,35 @@ import itertools
 from ufs.spec import UFS
 
 class SFTP(UFS):
-  def __init__(self, host: str, port: int):
+  def __init__(self, host: str, port: int, username: str = None, password: str = None):
     super().__init__()
     self._host = host
     self._port = port
+    self._username = username
+    self._password = password
     self._cfd = iter(itertools.count(start=5))
     self._fds = {}
 
   @staticmethod
-  def from_dict(*, host, port):
+  def from_dict(*, host, port, username, password):
     return SFTP(
       host=host,
       port=port,
+      username=username,
+      password=password,
     )
 
   def to_dict(self):
     return dict(super().to_dict(),
       host=self._host,
       port=self._port,
+      username=self._username,
+      password=self._password,
     )
 
   def start(self):
     self._ssh = paramiko.SSHClient()
-    self._ssh.connect(self._host, self._port)
+    self._ssh.connect(self._host, self._port, username=self._username, password=self._password)
     self._sftp = self._ssh.open_sftp()
 
   def stop(self):
