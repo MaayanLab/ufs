@@ -44,8 +44,7 @@ def sftp_server(ufs: UFS):
       stderr=sys.stderr,
       stdout=sys.stdout,
     )):
-      import time; time.sleep(0.5)
-      # wait_for(functools.partial(safe_predicate, lambda: nc_z(host, port)))
+      wait_for(functools.partial(safe_predicate, lambda: nc_z(host, port)))
       yield opts
 
 import contextlib

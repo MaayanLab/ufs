@@ -210,9 +210,15 @@ def serve_ufs_via_sftp(ufs: UFS, host: str, port: int, username: str, password: 
     transport.set_subsystem_handler(
       'sftp', paramiko.SFTPServer, USFTPServer
     )
-    transport.start_server(server=server)
-    channel = transport.accept()
-    connections.append((conn, addr, transport, channel))
+    try:
+      transport.start_server(server=server)
+      channel = transport.accept()
+      connections.append((conn, addr, transport, channel))
+    except KeyboardInterrupt:
+      raise
+    except:
+      logger.warning(traceback.print_exc())
+      continue
 
 if __name__ == '__main__':
   import sys, json
