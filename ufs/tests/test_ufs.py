@@ -181,7 +181,6 @@ def ufs(request):
       import os
       import sys
       import uuid
-      import socket
       import tempfile
       import functools
       from urllib.request import Request, urlopen
@@ -189,20 +188,16 @@ def ufs(request):
       from ufs.impl.ftp import FTP
       from ufs.impl.memory import Memory
       from ufs.impl.writecache import Writecache
-      from ufs.utils.polling import wait_for, safe_predicate
+      from ufs.utils.polling import wait_for
       from ufs.utils.process import active_process
+      from ufs.utils.socket import nc_z, autosocket
       from ufs.access.shutil import rmtree
-      def nc_z(host, port, timeout=1):
-        with socket.create_connection((host, port), timeout=timeout):
-          return True
       # get a temporary directory to store ftp files in
       with tempfile.TemporaryDirectory() as tmp:
         # generate credentials for ftp
         ftp_user, ftp_passwd = str(uuid.uuid4()), str(uuid.uuid4())
         # find a free port to run ftp
-        with socket.socket() as s:
-          s.bind(('', 0))
-          host, port = s.getsockname()
+        host, port = autosocket()
         # actually run ftp server
         with active_process(Popen(
           [sys.executable, '-m', 'pyftpdlib', f"--port={port}", f"--username={ftp_user}", f"--password={ftp_passwd}", f"--directory={tmp}", '--write'],
@@ -211,7 +206,7 @@ def ufs(request):
           stdout=sys.stdout,
         )):
           # wait for ftp to be running & ready
-          wait_for(functools.partial(safe_predicate, lambda: nc_z(host, port)))
+          wait_for(lambda: nc_z(host, port))
           # create an fsspec connection to the minio server
           with Writecache(FTP(
             host=host,
@@ -234,10 +229,9 @@ def ufs(request):
       from ufs.impl.memory import Memory
       from ufs.impl.sftp import SFTP
       from ufs.access.sftp import serve_ufs_via_sftp
+      from ufs.utils.socket import autosocket
       # find a free port to run sftp
-      with socket.socket() as s:
-        s.bind(('', 0))
-        host, port = s.getsockname()
+      host, port = autosocket()
       username, password = 'admin', 'admin'
       with Memory() as ufs:
         with serve_ufs_via_sftp(

@@ -18,18 +18,12 @@ def sftp_server(ufs: UFS):
     import os
     import sys
     import json
-    import socket
-    import functools
     from subprocess import Popen
     from ufs.utils.process import active_process
-    from ufs.utils.polling import wait_for, safe_predicate
-    def nc_z(host, port, timeout=1):
-      with socket.create_connection((host, port), timeout=timeout):
-        return True
+    from ufs.utils.polling import wait_for
+    from ufs.utils.socket import nc_z, autosocket
     # find a free port to run sftp
-    with socket.socket() as s:
-      s.bind(('', 0))
-      host, port = s.getsockname()
+    host, port = autosocket()
     username, password = 'admin', 'admin'
     opts = {
       'ufs': ufs.to_dict(),
@@ -44,7 +38,7 @@ def sftp_server(ufs: UFS):
       stderr=sys.stderr,
       stdout=sys.stdout,
     )):
-      wait_for(functools.partial(safe_predicate, lambda: nc_z(host, port)))
+      wait_for(lambda: nc_z(host, port))
       yield opts
 
 import contextlib

@@ -2,7 +2,6 @@ import os
 import errno
 import paramiko, paramiko.common
 import pathlib
-import functools
 import contextlib
 import logging
 import traceback
@@ -215,16 +214,12 @@ def ufs_via_sftp(ufs: dict, host: str, port: int, username: str, password: str =
         logger.error(traceback.print_exc())
         continue
 
-def nc_z(host: str, port: int, timeout: int = 1):
-  import socket
-  with socket.create_connection((host, port), timeout=timeout):
-    return True
-
 @contextlib.contextmanager
 def serve_ufs_via_sftp(ufs: UFS, host: str, port: int, username: str, password: str = None, keyfile: str = None, BACKLOG = 10):
   import multiprocessing as mp
   from ufs.utils.process import active_process
-  from ufs.utils.polling import wait_for, safe_predicate
+  from ufs.utils.polling import wait_for
+  from ufs.utils.socket import nc_z
   mp_spawn = mp.get_context('spawn')
   with active_process(mp_spawn.Process(
     target=ufs_via_sftp,
@@ -238,7 +233,7 @@ def serve_ufs_via_sftp(ufs: UFS, host: str, port: int, username: str, password: 
       BACKLOG=BACKLOG,
     ),
   )):
-    wait_for(functools.partial(safe_predicate, lambda: nc_z(host, port)))
+    wait_for(lambda: nc_z(host, port))
     yield
 
 if __name__ == '__main__':
