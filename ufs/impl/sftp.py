@@ -33,12 +33,13 @@ class SFTP(UFS):
 
   def start(self):
     self._ssh = paramiko.SSHClient()
+    self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     self._ssh.connect(self._host, self._port, username=self._username, password=self._password)
     self._sftp = self._ssh.open_sftp()
 
   def stop(self):
     self._sftp.close()
-    self._transport.close()
+    self._ssh.close()
 
   def ls(self, path):
     return self._sftp.listdir(str(path))
@@ -80,7 +81,12 @@ class SFTP(UFS):
     self._sftp.remove(str(path))
 
   def mkdir(self, path):
-    self._sftp.mkdir(str(path))
+    try:
+      self._sftp.stat(str(path))
+    except FileNotFoundError:
+      self._sftp.mkdir(str(path))
+    else:
+      raise FileExistsError(str(path))
 
   def rmdir(self, path):
     self._sftp.rmdir(str(path))
@@ -91,4 +97,4 @@ class SFTP(UFS):
       raise RuntimeError(f"cp resulted in {stderr.read()}")
 
   def rename(self, src, dst):
-    self._sftp.rename(src, dst)
+    self._sftp.rename(str(src), str(dst))
