@@ -12,7 +12,7 @@ from ufs.access.shutil import walk, copytree, rmtree
 def ffuse_mount(ufs: UFS, mount_dir: str = None):
   mount_dir_resolved = pathlib.Path(mount_dir or tempfile.mkdtemp())
   mount_dir_ufs = Prefix(Local(), mount_dir_resolved)
-  root = SafePurePosixPath('/')
+  root = SafePurePosixPath()
   copytree(ufs, root, mount_dir_ufs, root, exists_ok=True)
   before = OrderedDict(walk(mount_dir_ufs, root, dirfirst=False))
   try:

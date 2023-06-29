@@ -282,7 +282,7 @@ def test_map(ufs: UFS):
   'ffuse',
 ])
 def path(request, ufs):
-  ufs.info(SafePurePosixPath('/'))
+  ufs.info(SafePurePosixPath())
   if request.param == 'pathlib':
     upath = UPath(ufs) / 'pathlib'
     upath.mkdir()

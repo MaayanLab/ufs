@@ -17,6 +17,11 @@ class SafePurePosixPath_:
   def _from_parts(parts):
     root, *ps = parts
     return root + '/'.join(ps)
+  def joinpath(self, *other):
+    p = self
+    for op in other:
+      p = p / op
+    return p
   def __truediv__(self, subpath: 'PathLike'):
     p = self._path
     sp = subpath if isinstance(subpath, pathlib.PurePosixPath) or isinstance(subpath, SafePurePosixPath_) else pathlib.PurePosixPath(str(subpath))
@@ -39,10 +44,12 @@ class SafePurePosixPath_:
 
 PathLike: t.TypeAlias =  bytes | str | pathlib.PurePosixPath | SafePurePosixPath_
 
-def SafePurePosixPath(path: PathLike) -> SafePurePosixPath_:
+def SafePurePosixPath(path: PathLike = None) -> SafePurePosixPath_:
   ''' This ensures the path will always be /something
   It's not possible to go above the parent, // or /./ does nothing, etc..
   '''
+  if not path:
+    return SafePurePosixPath_()
   if isinstance(path, bytes):
     path = str(path)
   if isinstance(path, SafePurePosixPath_):

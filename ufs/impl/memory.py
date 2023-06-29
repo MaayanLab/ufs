@@ -21,13 +21,13 @@ class Memory(UFS):
   def __init__(self):
     super().__init__()
     self._inodes: dict[SafePurePosixPath_, MemoryInode] = {
-      SafePurePosixPath('/'): MemoryInode({
+      SafePurePosixPath(): MemoryInode({
         'type': 'directory',
         'size': 0,
       })
     }
     self._dirs: dict[SafePurePosixPath_, set[SafePurePosixPath_]] = {
-      SafePurePosixPath('/'): set(),
+      SafePurePosixPath(): set(),
     }
     self._cfd = iter(itertools.count(start=5))
     self._fds: dict[int, MemoryFileDescriptor] = {}

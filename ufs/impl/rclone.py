@@ -14,7 +14,7 @@ from subprocess import Popen
 logger = logging.getLogger(__name__)
 
 def rclone_uri_from_path(path):
-  if path == SafePurePosixPath('/'):
+  if path == SafePurePosixPath():
     return None, None
   _, fs, *parts = path.parts
   if not parts:

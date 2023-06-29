@@ -28,9 +28,9 @@ class DRS(DescriptorFromAtomicMixin, UFS):
       info = self._info(host, opaque_id, expand=True)
       for i in range(len(subpath)):
         if info.get('contents') is None:
-          raise NotADirectoryError(SafePurePosixPath('/')/host/opaque_id/'/'.join(subpath[:i]))
+          raise NotADirectoryError(SafePurePosixPath()/host/opaque_id/'/'.join(subpath[:i]))
         info = one(item['name'] for item in info['contents'] if item['name'] == subpath[i])
-      return SafePurePosixPath('/')/host/info['id'], info
+      return SafePurePosixPath()/host/info['id'], info
 
   def info(self, path):
     flat_path, info = self._flatten(path)
