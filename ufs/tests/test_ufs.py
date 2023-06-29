@@ -11,6 +11,7 @@ from ufs.utils.pathlib import SafePurePosixPath
   'memory-async-sync',
   'tempdir',
   'overlay',
+  'mapper',
   'fsspec-local',
   'fsspec-memory',
   'dircache-local',
@@ -61,6 +62,13 @@ def ufs(request):
     from ufs.impl.overlay import Overlay
     from ufs.impl.memory import Memory
     with Overlay(Memory(), Memory()) as ufs:
+      yield ufs
+  elif request.param == 'mapper':
+    from ufs.impl.memory import Memory
+    from ufs.impl.mapper import Mapper
+    with Mapper({
+      '/': Memory(),
+    }) as ufs:
       yield ufs
   elif request.param == 'fsspec-local':
     import tempfile
@@ -350,3 +358,20 @@ def test_overlay():
     (overlay / 'test').write_text('Hello World!')
     assert (lower / 'test').read_text() == 'Hello World'
     assert (overlay / 'test').read_text() == 'Hello World!'
+
+def test_mapper():
+  from ufs.impl.memory import Memory
+  from ufs.impl.mapper import Mapper
+  from ufs.access.pathlib import UPath
+  root = Memory()
+  sub = Memory()
+  with Mapper({ '/': root, '/a/b': sub }) as mapper:
+    root = UPath(root)
+    (root/'a/b').mkdir(parents=True) # TODO
+    sub = UPath(sub)
+    mapper = UPath(mapper)
+    assert {p.name for p in (mapper/'a').iterdir()} == {'b'}
+    (mapper/'a/b/c').write_text('test2')
+    (mapper/'a/d').write_text('test1')
+    assert (sub/'c').read_text() == 'test2'
+    assert (root/'a/d').read_text() == 'test1'
