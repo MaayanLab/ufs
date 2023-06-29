@@ -7,7 +7,10 @@
 
 import re
 import flask
+import json
+import typing as t
 import datetime as dt
+import contextlib
 from ufs.spec import UFS
 
 def sha256(stream):
@@ -24,23 +27,30 @@ def RFC3339(ts = None):
     ts = dt.datetime.now()
   return ts.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-def drs_from_ufs(ufs: UFS, *, app: flask.Blueprint, public_url: str):
+def index_ufs_for_drs(ufs: UFS, index: t.MutableMapping[str, t.Any] = {}):
   from ufs.access.shutil import walk
-  objects = {}
-  bundles = {}
-  sha256sums = {}
+  index['objects'] = {}
+  objects = index['objects']
+  index['bundles'] = {}
+  bundles = index['bundles']
+  index['sha256sums'] = {}
+  sha256sums = index['sha256sums']
   for path, info in walk(ufs, '/', dirfirst=False):
     if info['type'] == 'file':
-      sha256sums[path] = sha256sum = sha256(ufs.cat(path))
+      sha256sums[str(path)] = sha256sum = sha256(ufs.cat(path))
       objects[sha256sum] = dict(path=path, info=info)
       if path.parent not in bundles:
-        bundles[path.parent] = []
-      bundles[path.parent].push(sha256sum)
+        bundles[str(path.parent)] = []
+      bundles[str(path.parent)].append(sha256sum)
     elif info['type'] == 'directory':
-      if path.parent in bundles:
-        sha256sums[path] = sha256sum = sha256(bundles[path.parent])
+      if str(path.parent) in bundles:
+        sha256sums[str(path)] = sha256sum = sha256(map(str.encode, bundles[str(path.parent)]))
         objects[sha256sum] = dict(path=path, info=info)
-  #
+  return index
+
+def flask_ufs_for_drs(ufs: UFS, index: t.Mapping[str, t.Any], *, app: flask.Flask | flask.Blueprint, public_url: str):
+  objects = index['objects']
+  bundles = index['bundles']
   created_at = RFC3339()
   @app.get('/ga4gh/drs/v1/service-info')
   def service_info():
@@ -65,6 +75,7 @@ def drs_from_ufs(ufs: UFS, *, app: flask.Blueprint, public_url: str):
     }
   @app.get('/ga4gh/drs/v1/objects/<object_id>')
   def objects_get(object_id):
+    expand = json.loads(flask.request.args.get('expand', 'false'))
     try:
       drs_object = objects[object_id]
     except KeyError:
@@ -93,12 +104,18 @@ def drs_from_ufs(ufs: UFS, *, app: flask.Blueprint, public_url: str):
         ],
       })
     elif drs_object['info']['type'] == 'directory':
-      data.update({
-        "contents": [
-          { "id": id, "name": objects[id]['path'].name }
-          for id in bundles[object_id]
-        ],
-      })
+      # add "contents" to data when applicable, expanding
+      #  children when expand=true param was specified
+      Q = [data]
+      while Q:
+        item = Q.pop()
+        item_object = objects[item['id']]
+        if item_object['info']['type'] == 'directory':
+          item['contents'] = contents = [
+            { "id": id, "name": objects[id]['path'].name }
+            for id in bundles[str(item_object['path'])]
+          ]
+          if expand: Q += contents
     return data
   @app.get('/ga4gh/drs/v1/objects/<object_id>/access/<access_id>')
   def objects_access_get(object_id, access_id):
@@ -123,3 +140,42 @@ def drs_from_ufs(ufs: UFS, *, app: flask.Blueprint, public_url: str):
       flask.abort(404)
   #
   return app
+
+def create_app():
+  import os
+  ufs = UFS.from_dict(**json.loads(os.environ.pop('UFS_SPEC')))
+  index = index_ufs_for_drs(ufs)
+  return flask_ufs_for_drs(
+    ufs, index,
+    app=flask.Flask(__name__),
+    public_url=os.environ.pop('UFS_PUBLIC_URL'),
+  )
+
+@contextlib.contextmanager
+def serve_ufs_via_drs(ufs: UFS, host: str, port: int = 80, public_url: str = None):
+  import os
+  import sys
+  import shutil
+  import signal
+  from subprocess import Popen
+  from ufs.utils.process import active_process
+  from ufs.utils.polling import wait_for
+  from ufs.utils.socket import nc_z
+  if public_url is None:
+    if port == 80:
+      public_url = f"http://{host}"
+    else:
+      public_url = f"http://{host}:{port}"
+  gunicorn = shutil.which('gunicorn')
+  assert gunicorn
+  with active_process(Popen(
+    [gunicorn, '--bind', f"{host}:{port}", 'ufs.access.drs:create_app()'],
+    stdout=sys.stdout,
+    stderr=sys.stderr,
+    env=dict(os.environ,
+      UFS_SPEC=json.dumps(ufs.to_dict()),
+      UFS_PUBLIC_URL=public_url,
+    ),
+  ), terminate_signal=signal.SIGINT):
+    wait_for(lambda: nc_z(host, port))
+    yield
