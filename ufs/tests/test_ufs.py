@@ -10,6 +10,7 @@ from ufs.utils.pathlib import SafePurePosixPath
   'local-memory-writecache',
   'memory-async-sync',
   'tempdir',
+  'overlay',
   'fsspec-local',
   'fsspec-memory',
   'dircache-local',
@@ -55,6 +56,11 @@ def ufs(request):
   elif request.param == 'tempdir':
     from ufs.impl.tempdir import TemporaryDirectory
     with TemporaryDirectory() as ufs:
+      yield ufs
+  elif request.param == 'overlay':
+    from ufs.impl.overlay import Overlay
+    from ufs.impl.memory import Memory
+    with Overlay(Memory(), Memory()) as ufs:
       yield ufs
   elif request.param == 'fsspec-local':
     import tempfile
@@ -323,3 +329,24 @@ def test_ufs(path: UPath):
   assert [p.name for p in path.iterdir()] == ['B']
   (path/'B').unlink()
   assert not (path/'B').exists()
+
+def test_overlay():
+  from ufs.impl.memory import Memory
+  from ufs.impl.overlay import Overlay
+  from ufs.access.pathlib import UPath
+  lower = Memory()
+  upper = Memory()
+  with Overlay(lower, upper) as overlay:
+    lower = UPath(lower)
+    upper = UPath(upper)
+    overlay = UPath(overlay)
+    (overlay / 'test_dir').mkdir()
+    (lower / 'test').write_text('Hello World')
+    assert {p.name for p in overlay.iterdir()} == {'test', 'test_dir'}
+    (overlay / 'test2').write_text('Hello World!')
+    assert {p.name for p in lower.iterdir()} == {'test'}
+    assert {p.name for p in upper.iterdir()} == {'test2', 'test_dir'}
+    assert {p.name for p in overlay.iterdir()} == {'test', 'test2', 'test_dir'}
+    (overlay / 'test').write_text('Hello World!')
+    assert (lower / 'test').read_text() == 'Hello World'
+    assert (overlay / 'test').read_text() == 'Hello World!'
