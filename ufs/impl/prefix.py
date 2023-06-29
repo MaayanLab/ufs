@@ -27,7 +27,7 @@ class Prefix(UFS):
   def to_dict(self):
     return dict(super().to_dict(),
       ufs=self._ufs.to_dict(),
-      prefix=self._prefix,
+      prefix=str(self._prefix),
     )
 
   def ls(self, path):
