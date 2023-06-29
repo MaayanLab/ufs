@@ -56,7 +56,7 @@ class Mapper(UFS):
       ufs_listing = None
     if prefix_listing is None and ufs_listing is None:
       raise FileNotFoundError(path)
-    return list(set(ufs_listing or {}) | (prefix_listing or {}))
+    return list(set(ufs_listing or set()) | (prefix_listing or set()))
 
   def info(self, path):
     ufs, subpath = self._matchpath(path)
