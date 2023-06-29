@@ -93,8 +93,8 @@ class DRS(DescriptorFromAtomicMixin, UFS):
       from ufs.access.url import ufs_from_url
       try:
         with ufs_from_url(access_url['url']) as ufs:
-          yield from ufs.cat(access_url['url'])
-        break
+          yield from ufs.cat('/')
+        return
       except:
         pass
     raise RuntimeError(f"Failed to fetch object from any of the {info.get('access_methods')}")
