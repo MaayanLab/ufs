@@ -40,7 +40,7 @@ class Overlay(UFS):
       lower_files = None
     if upper_files is None and lower_files is None:
       raise FileNotFoundError(path)
-    return (upper_files or []) + (lower_files or [])
+    return list(set(upper_files or {}) | set(lower_files or {}))
 
   def info(self, path):
     try:
