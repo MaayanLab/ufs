@@ -39,13 +39,14 @@ def index_ufs_for_drs(ufs: UFS, index: t.MutableMapping[str, t.Any] = {}):
     if info['type'] == 'file':
       sha256sums[str(path)] = sha256sum = sha256(ufs.cat(path))
       objects[sha256sum] = dict(path=path, info=info)
-      if path.parent not in bundles:
+    elif info['type'] == 'directory':
+      if str(path.parent) not in bundles: continue # this would happen with an empty directory (don't make empty bundles)
+      sha256sums[str(path)] = sha256sum = sha256(map(str.encode, bundles[str(path.parent)]))
+      objects[sha256sum] = dict(path=path, info=info)
+    if path != path.parent: # don't add root to itself
+      if str(path.parent) not in bundles:
         bundles[str(path.parent)] = []
       bundles[str(path.parent)].append(sha256sum)
-    elif info['type'] == 'directory':
-      if str(path.parent) in bundles:
-        sha256sums[str(path)] = sha256sum = sha256(map(str.encode, bundles[str(path.parent)]))
-        objects[sha256sum] = dict(path=path, info=info)
   return index
 
 def flask_ufs_for_drs(ufs: UFS, index: t.Mapping[str, t.Any], *, app: flask.Flask | flask.Blueprint, public_url: str):

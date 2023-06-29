@@ -40,4 +40,5 @@ def test_drs(ufs, drs_client):
   assert (drs / index['sha256sums']['/b']).is_dir()
   assert (drs / index['sha256sums']['/b/c']).is_file()
   assert (drs / index['sha256sums']['/b/d']).is_file()
+  assert {p.name for p in (drs / index['sha256sums']['/'] / 'b').iterdir()} == {'c', 'd'}
   with pytest.raises(FileNotFoundError): (drs/'nowhere').read_text()
