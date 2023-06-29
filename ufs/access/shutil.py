@@ -51,7 +51,7 @@ def copyfile(src_ufs: UFS, src_path: SafePurePosixPath_, dst_ufs: UFS, dst_path:
 @coerce_pathlike
 def movefile(src_ufs: UFS, src_path: SafePurePosixPath_, dst_ufs: UFS, dst_path: SafePurePosixPath_):
   if src_ufs is dst_ufs:
-    if src_path in dst_path:
+    if str(src_path) in str(dst_path):
       raise RuntimeError("Can't move path into itself")
     src_ufs.rename(src_path, dst_path)
   else:
@@ -95,7 +95,7 @@ def rmtree(ufs: UFS, path: SafePurePosixPath_):
 
 @coerce_pathlike
 def move(src_ufs: UFS, src_path: SafePurePosixPath_, dst_ufs: UFS, dst_path: SafePurePosixPath_):
-  if src_ufs is dst_ufs and src_path in dst_path:
+  if src_ufs is dst_ufs and str(src_path) in str(dst_path):
     raise RuntimeError("Can't move path into itself")
   copy(src_ufs, src_path, dst_ufs, dst_path)
   rmtree(src_ufs, src_path)
