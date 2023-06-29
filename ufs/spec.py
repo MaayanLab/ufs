@@ -18,7 +18,7 @@ class FileStat(t.TypedDict):
 
 class AtomicFromDescriptorMixin:
   def cat(self, path: SafePurePosixPath_) -> t.Iterator[bytes]:
-    fd = self.open(path, 'r')
+    fd = self.open(path, 'rb')
     while True:
       buf = self.read(fd, self.CHUNK_SIZE)
       if not buf: break
@@ -26,7 +26,7 @@ class AtomicFromDescriptorMixin:
     self.close(fd)
 
   def put(self, path: SafePurePosixPath_, data: t.Iterator[bytes], *, size_hint: int = None):
-    fd = self.open(path, 'w', size_hint=size_hint)
+    fd = self.open(path, 'wb', size_hint=size_hint)
     for buf in data:
       self.write(fd, buf)
     self.close(fd)
@@ -205,7 +205,7 @@ class UFS:
 
 class AsyncAtomicFromDescriptorMixin:
   async def cat(self, path: SafePurePosixPath_) -> t.AsyncIterator[bytes]:
-    fd = await self.open(path, 'r')
+    fd = await self.open(path, 'rb')
     while True:
       buf = await self.read(fd, self.CHUNK_SIZE)
       if not buf: break
@@ -213,7 +213,7 @@ class AsyncAtomicFromDescriptorMixin:
     await self.close(fd)
 
   async def put(self, path: SafePurePosixPath_, data: t.AsyncIterator[bytes], *, size_hint: int = None):
-    fd = await self.open(path, 'w', size_hint=size_hint)
+    fd = await self.open(path, 'wb', size_hint=size_hint)
     async for buf in data:
       await self.write(fd, buf)
     await self.close(fd)
