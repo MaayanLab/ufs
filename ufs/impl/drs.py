@@ -42,9 +42,10 @@ class DRS(DescriptorFromAtomicMixin, UFS):
     else:
       info = self._info(host, opaque_id, expand=True)
       for i in range(len(subpath)):
-        if info.get('contents') is None:
+        try:
+          info = one(item for item in info.get('contents', []) if item['name'] == subpath[i])
+        except StopIteration:
           raise NotADirectoryError(SafePurePosixPath()/host/opaque_id/'/'.join(subpath[:i]))
-        info = one(item['name'] for item in info['contents'] if item['name'] == subpath[i])
       return SafePurePosixPath()/host/info['id'], info
 
   def info(self, path):
