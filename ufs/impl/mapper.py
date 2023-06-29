@@ -39,7 +39,7 @@ class Mapper(UFS):
   def to_dict(self):
     return dict(super().to_dict(),
       pathmap={
-        k: v.to_dict()
+        str(k): v.to_dict()
         for k, v in self._pathmap.items()
       },
     )
