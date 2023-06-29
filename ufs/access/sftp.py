@@ -1,3 +1,5 @@
+''' Serve a UFS over SFTP
+'''
 import os
 import errno
 import paramiko, paramiko.common

@@ -1,3 +1,5 @@
+''' SFTP Client as a UFS
+'''
 import stat
 import paramiko
 import itertools

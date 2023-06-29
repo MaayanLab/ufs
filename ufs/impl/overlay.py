@@ -1,3 +1,5 @@
+''' Like OverlayFS but with UFS -- all changes go in `upper` with fallbacks to `lower`
+'''
 import logging
 import itertools
 from ufs.spec import UFS

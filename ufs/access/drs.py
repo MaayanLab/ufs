@@ -1,4 +1,4 @@
-''' Serve ufs using a DRS server -- ids are content-addressable
+''' Serve ufs using a GA4GH compatible DRS server where ids are content-addressable
 
 - all files have their sha256sum computed
 - all directories are the sha256sum of the concatenated sha256sum of their contents

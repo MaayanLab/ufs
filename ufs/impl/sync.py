@@ -1,3 +1,5 @@
+''' Turn any AsyncUFS into a regular UFS by running it in a dedicated event loop thread.
+'''
 import asyncio
 import itertools
 import threading as t

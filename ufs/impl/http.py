@@ -1,3 +1,5 @@
+''' UFS interface for accessing HTTP
+'''
 import requests
 from ufs.spec import DescriptorFromAtomicMixin, UFS
 

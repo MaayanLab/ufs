@@ -1,3 +1,7 @@
+''' Can be used as a replacement for fuse in development environments, it's quite simple:
+- start: copy files to the mount directory
+- stop: replicate any changes to the mount directory to the ufs and cleanup
+'''
 import pathlib
 import tempfile
 import contextlib

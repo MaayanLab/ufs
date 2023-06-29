@@ -1,3 +1,5 @@
+''' Treat any sync UFS as an AsyncUFS, it runs in a dedicated thread
+'''
 import asyncio
 import itertools
 from ufs.spec import UFS, AsyncUFS

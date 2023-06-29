@@ -1,3 +1,7 @@
+''' A GA4GH-compatible DRS client in the form of a UFS store.
+
+Maps paths of like /hostname/opaque_id/bundle_content_by_name => drs://hostname/opaque_id
+'''
 import requests
 from ufs.spec import DescriptorFromAtomicMixin, UFS
 from ufs.utils.one import one

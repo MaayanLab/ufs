@@ -1,3 +1,5 @@
+''' url-style access for UFS, similar to fsspec's urls but all backed by UFS
+'''
 import contextlib
 from ufs.utils.url import parse_url, parse_netloc, parse_fragment_qs
 from ufs.utils.pathlib import SafePurePosixPath

@@ -1,3 +1,5 @@
+''' Join multiple UFS together by mapping subpaths to a particular sub-UFS
+'''
 import logging
 import itertools
 import typing as t
