@@ -4,10 +4,25 @@ from ufs.utils.one import one
 from ufs.utils.pathlib import SafePurePosixPath
 
 class DRS(DescriptorFromAtomicMixin, UFS):
+  def __init__(self, scheme='https'):
+    super().__init__()
+    self._scheme = scheme
+
+  @staticmethod
+  def from_dict(*, scheme):
+    return DRS(
+      scheme=scheme,
+    )
+
+  def to_dict(self):
+    return dict(super().to_dict(),
+      scheme=self._scheme,
+    )
+
   def _info(self, host, opaque_id, expand=False):
     ''' DRS Object Info
     '''
-    url = 'https://' + host + '/ga4gh/drs/v1/objects/' + opaque_id + ('?expand=true' if expand else '')
+    url = self._scheme + '://' + host + '/ga4gh/drs/v1/objects/' + opaque_id + ('?expand=true' if expand else '')
     req = requests.get(url)
     if req.status_code == 404:
       raise FileNotFoundError('/' + host + '/' + opaque_id)
@@ -48,7 +63,7 @@ class DRS(DescriptorFromAtomicMixin, UFS):
     return [item['name'] for item in info['contents']]
 
   def cat(self, path):
-    flat_path, info = self._flatten(path).parts
+    flat_path, info = self._flatten(path)
     if info.get('contents') is not None:
       raise IsADirectoryError(path)
     elif info.get('access_methods') is None:
@@ -61,7 +76,7 @@ class DRS(DescriptorFromAtomicMixin, UFS):
         access_url = dict(url=access_method['access_url'])
       elif access_method.get('access_id'):
         _, host, opaque_id = flat_path.parts
-        req = requests.get('https://' + host + '/ga4gh/drs/v1/objects/' + opaque_id + '/access/', access_method['access_id'])
+        req = requests.get(self._scheme + '://' + host + '/ga4gh/drs/v1/objects/' + opaque_id + '/access/' + access_method['access_id'])
         if req.status_code == 404:
           raise FileNotFoundError(path)
         elif req.status_code in {401, 403}:
