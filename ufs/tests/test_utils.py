@@ -6,7 +6,6 @@ def test_prefix_tree():
     'a/b/c',
     'a/d',
   ])
-  import logging; logging.getLogger(__name__).critical(t)
   assert search_prefix_tree(t, '') == (SafePurePosixPath(), SafePurePosixPath())
   assert search_prefix_tree(t, 'a/d/e') == (SafePurePosixPath('a/d'), SafePurePosixPath('e'))
   assert search_prefix_tree(t, 'a/b/c') == (SafePurePosixPath('a/b/c'), SafePurePosixPath())
