@@ -144,3 +144,11 @@ def fuse_mount(ufs: UFS, mount_dir: str = None):
   finally:
     wait_for(functools.partial(safe_predicate, lambda: not mount_dir_resolved.is_mount()))
     mount_dir_resolved.rmdir()
+
+if __name__ == '__main__':
+  import os, sys, json, pathlib, threading
+  ufs = UFS.from_dict(**json.loads(os.environ.pop('UFS_SPEC')))
+  mount_dir = pathlib.Path(sys.argv[1])
+  assert mount_dir.exists()
+  with fuse_mount(ufs, mount_dir):
+    threading.Event().wait()
