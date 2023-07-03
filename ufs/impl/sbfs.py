@@ -239,6 +239,11 @@ class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
     if info['type'] == 'directory':
       raise IsADirectoryError(str(path))
     await self._delete(info)
+    parent_params = await self._as_parent_params(path.parent)
+    # parent directory listing
+    self._sbfs_cache.discard('files:'+str(dict(parent_params)))
+    # file in parent directory listing
+    self._sbfs_cache.discard('files:'+str(dict(parent_params, name=path.name)))
     self._sbfs_cache.discard('file_info:'+str(path))
     self._sbfs_cache.discard('file_details:'+str(info['id']))
 
