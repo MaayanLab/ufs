@@ -180,3 +180,10 @@ def serve_ufs_via_drs(ufs: UFS, host: str, port: int = 80, public_url: str = Non
   ), terminate_signal=signal.SIGINT):
     wait_for(lambda: nc_z(host, port))
     yield
+
+if __name__ == '__main__':
+  import os, sys
+  os.execv(
+    sys.executable,
+    [sys.executable, '-m', 'gunicorn', *sys.argv[1:], 'ufs.access.drs:create_app()']
+  )
