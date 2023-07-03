@@ -17,18 +17,28 @@ def ufs():
 
 @pytest.fixture
 def drs_server(ufs):
-  from ufs.utils.socket import autosocket
-  from ufs.access.drs import serve_ufs_via_drs
-  host, port = autosocket()
-  with serve_ufs_via_drs(ufs, host, port):
-    yield f"{host}:{port}"
+  try:
+    import flask
+  except ImportError:
+    pytest.skip('Install flask for drs server functionality')
+  else:
+    from ufs.utils.socket import autosocket
+    from ufs.access.drs import serve_ufs_via_drs
+    host, port = autosocket()
+    with serve_ufs_via_drs(ufs, host, port):
+      yield f"{host}:{port}"
 
 @pytest.fixture
 def drs_client(drs_server):
-  from ufs.impl.drs import DRS
-  from ufs.impl.prefix import Prefix
-  with Prefix(DRS(scheme='http'), drs_server) as drs:
-    yield drs
+  try:
+    import requests
+  except ImportError:
+    pytest.skip('Install requests for drs client functionality')
+  else:
+    from ufs.impl.drs import DRS
+    from ufs.impl.prefix import Prefix
+    with Prefix(DRS(scheme='http'), drs_server) as drs:
+      yield drs
 
 def test_drs(ufs, drs_client):
   from ufs.access.drs import index_ufs_for_drs

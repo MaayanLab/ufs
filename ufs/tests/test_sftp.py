@@ -62,7 +62,7 @@ def sftp_client(sftp_server):
   finally:
     ssh.close()
 
-def test_sftp(sftp_server: paramiko.SFTPServer):
+def test_sftp(sftp_server):
   with sftp_client(sftp_server) as client1:
     with sftp_client(sftp_server) as client2:
       assert client1.listdir() == []
