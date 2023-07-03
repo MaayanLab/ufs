@@ -5,22 +5,46 @@ import itertools
 import threading as t
 from ufs.spec import UFS, AsyncUFS
 
+class AsyncExecutor:
+  ''' Similar to ThreadPoolExecutor but submit & manage asyncio tasks
+  '''
+  async def __aenter__(self):
+    self.task_id = iter(itertools.count())
+    self.tasks = {}
+    self.closing = False
+    return self
+  async def _invoke(self, task_id, fn, *args, **kwargs):
+    await fn(*args, **kwargs)
+    del self.tasks[task_id]
+  def submit(self, fn, *args, **kwargs):
+    if self.closing: raise asyncio.CancelledError()
+    task_id = next(self.task_id)
+    self.tasks[task_id] = asyncio.create_task(self._invoke(task_id, fn, *args, **kwargs))
+  async def __aexit__(self, *args):
+    self.closing = True
+    await asyncio.gather(*self.tasks.values())
+    del self.tasks
+
+async def _run_and_return(ufs, send, task_id, op, args, kwargs):
+  try:
+    func = getattr(ufs, op)
+    res = await func(*args, **kwargs)
+  except Exception as err:
+    await send.put([task_id, None, err])
+  else:
+    await send.put([task_id, res, None])
+
 async def async_ufs_proc(send: asyncio.PriorityQueue, recv: asyncio.PriorityQueue, ufs_spec):
   ufs = UFS.from_dict(**ufs_spec)
-  while True:
-    msg = await recv.get()
-    i, op, args, kwargs = msg
-    if op == None:
+  async with AsyncExecutor() as exec:
+    while True:
+      msg = await recv.get()
+      i, op, args, kwargs = msg
+      if op == None:
+        recv.task_done()
+        break
+      exec.submit(_run_and_return, ufs, send, *msg)
       recv.task_done()
-      break
-    try:
-      func = getattr(ufs, op)
-      res = await func(*args, **kwargs)
-    except Exception as err:
-      await send.put([i, None, err])
-    else:
-      await send.put([i, res, None])
-    recv.task_done()
 
 def event_loop_thread(loop, send: asyncio.PriorityQueue, recv: asyncio.PriorityQueue, ufs_spec):
   loop.run_until_complete(async_ufs_proc(send, recv, ufs_spec))
