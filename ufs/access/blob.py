@@ -20,7 +20,7 @@ def RFC3339(ts = None):
 def flask_ufs_for_blob(ufs: UFS, tmpdir: UFS, *, app: flask.Flask | flask.Blueprint, public_url: str):
   created_at = RFC3339()
   @app.post('/ufs/blob/v1/objects')
-  def objects_post():
+  def blob_objects_post():
     import uuid
     tmp = str(uuid.uuid4())
     h = hashlib.sha256()
@@ -39,13 +39,13 @@ def flask_ufs_for_blob(ufs: UFS, tmpdir: UFS, *, app: flask.Flask | flask.Bluepr
     return flask.jsonify(object_id)
   #
   @app.get('/ufs/blob/v1/objects/<object_id>')
-  def objects_get(object_id):
+  def blob_objects_get(object_id):
     if not (UPath(ufs)/object_id).is_file():
       flask.abort(404)
     return flask.Response(ufs.cat(SafePurePosixPath(object_id)))
   #
   @app.get('/ga4gh/drs/v1/service-info')
-  def service_info():
+  def drs_service_info():
     return {
       "id": "cloud.maayanlab.ufs",
       "name": "UFS",
@@ -66,7 +66,7 @@ def flask_ufs_for_blob(ufs: UFS, tmpdir: UFS, *, app: flask.Flask | flask.Bluepr
       "version": "1.0.0"
     }
   @app.get('/ga4gh/drs/v1/objects/<object_id>')
-  def objects_get(object_id):
+  def drs_objects_get(object_id):
     try:
       info = ufs.info(SafePurePosixPath(object_id))
     except FileNotFoundError:
@@ -86,7 +86,7 @@ def flask_ufs_for_blob(ufs: UFS, tmpdir: UFS, *, app: flask.Flask | flask.Bluepr
       ],
     }
   @app.get('/ga4gh/drs/v1/objects/<object_id>/access/<access_id>')
-  def objects_access_get(object_id, access_id):
+  def drs_objects_access_get(object_id, access_id):
     if access_id != 'https':
       return flask.abort(404)
     try:
