@@ -102,7 +102,9 @@ def proto_drs(url):
   from ufs.impl.drs import DRS
   from ufs.impl.prefix import Prefix
   return Prefix(
-    DRS(),
+    DRS(
+      **parse_fragment_qs(url)
+    ),
     url['path']
   )
 
