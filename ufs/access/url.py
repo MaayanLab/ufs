@@ -119,17 +119,7 @@ def ufs_from_url(url: str, protos=protos):
   return protos[url_parsed['proto']](url_parsed)
 
 @contextlib.contextmanager
-def upath_from_url(url: str, protos=protos):
-  '''
-  Usage:
-  ufs = ufs_from_url('s3://mybucket/myprefix/')
-  '''
-  from ufs.access.pathlib import UPath
-  with ufs_from_url(url, protos=protos) as ufs:
-    yield UPath(ufs)
-
-@contextlib.contextmanager
-def open_from_url(url: str, mode='r', protos=protos):
+def ufs_from_url_file(url: str, protos=protos):
   '''
   Usage:
   with open_from_url('s3://mybucket/myprefix/my_file.tsv#?anon=true') as fr:
@@ -141,7 +131,35 @@ def open_from_url(url: str, mode='r', protos=protos):
   path = SafePurePosixPath(url_parsed['path'])
   ufs = protos[url_parsed['proto']](dict(url_parsed, path=path.parent))
   with ufs:
-    from ufs.access.pathlib import UPath
-    upath = UPath(ufs)
-    with (upath/path.name).open(mode) as fr:
-      yield fr
+    yield ufs, path.name
+
+@contextlib.contextmanager
+def upath_from_url(url: str, protos=protos):
+  '''
+  Usage:
+  ufs = ufs_from_url('s3://mybucket/myprefix/')
+  '''
+  from ufs.access.pathlib import UPath
+  with ufs_from_url(url, protos=protos) as ufs:
+    yield UPath(ufs)
+
+@contextlib.contextmanager
+def upath_from_url_file(url: str, protos=protos):
+  '''
+  Usage:
+  ufs = ufs_from_url('s3://mybucket/myprefix/')
+  '''
+  from ufs.access.pathlib import UPath
+  with ufs_from_url_file(url, protos=protos) as ufs, name:
+    yield UPath(ufs) / name
+
+@contextlib.contextmanager
+def open_from_url(url: str, mode='r', protos=protos):
+  '''
+  Usage:
+  with open_from_url('s3://mybucket/myprefix/my_file.tsv#?anon=true') as fr:
+    print(fr.read())
+  '''
+  with upath_from_url_file(url) as upath:
+    with upath.open(mode) as fh:
+      yield fh
