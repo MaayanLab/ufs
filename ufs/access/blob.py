@@ -26,7 +26,7 @@ def flask_ufs_for_blob(ufs: UFS, tmpdir: UFS, *, app: flask.Flask | flask.Bluepr
     h = hashlib.sha256()
     with (UPath(tmpdir)/tmp).open('wb') as fw:
       while True:
-        buf = flask.request.stream.read(TemporaryDirectory.CHUNK_SIZE)
+        buf = flask.request.stream.read(tmpdir.CHUNK_SIZE)
         if not buf:
           break
         h.update(buf)
