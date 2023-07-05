@@ -5,7 +5,9 @@
 - it's all served as a drs-compatible access endpoint
 '''
 
+import os
 import re
+import sys
 import flask
 import json
 import typing as t
@@ -143,19 +145,20 @@ def flask_ufs_for_drs(ufs: UFS, index: t.Mapping[str, t.Any], *, app: flask.Flas
   return app
 
 def create_app():
-  import os
+  import atexit
   ufs = UFS.from_dict(**json.loads(os.environ.pop('UFS_SPEC')))
-  index = index_ufs_for_drs(ufs)
+  ufs.start()
+  @atexit.register
+  def cleanup():
+    ufs.stop()
   return flask_ufs_for_drs(
-    ufs, index,
+    ufs, index_ufs_for_drs(ufs),
     app=flask.Flask(__name__),
     public_url=os.environ.pop('UFS_PUBLIC_URL'),
   )
 
 @contextlib.contextmanager
 def serve_ufs_via_drs(ufs: UFS, host: str, port: int = 80, public_url: str = None):
-  import os
-  import sys
   import shutil
   import signal
   from subprocess import Popen
@@ -182,7 +185,6 @@ def serve_ufs_via_drs(ufs: UFS, host: str, port: int = 80, public_url: str = Non
     yield
 
 if __name__ == '__main__':
-  import os, sys
   os.execv(
     sys.executable,
     [sys.executable, '-m', 'gunicorn', *sys.argv[1:], 'ufs.access.drs:create_app()']
