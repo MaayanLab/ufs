@@ -122,11 +122,12 @@ def flask_ufs_for_drs(ufs: UFS, index: t.Mapping[str, t.Any], *, app: flask.Flas
     return data
   @app.get('/ga4gh/drs/v1/objects/<object_id>/access/<access_id>')
   def objects_access_get(object_id, access_id):
+    if access_id != 'https':
+      return flask.abort(404)
     try:
       drs_object = objects[object_id]
     except KeyError:
       return flask.abort(404)
-    assert access_id == 'https'
     return {
       "url": f"{public_url}/ga4gh/drs/v1/objects/{object_id}/data",
       # "headers": {},
