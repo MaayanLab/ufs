@@ -115,13 +115,31 @@ class UPathBinaryOpener:
   def write(self, data: bytes) -> int:
     assert not self.closed
     return self._ufs.write(self._fd, data)
+  def __iter__(self):
+    assert not self.closed
+    buffer = b''
+    while True:
+      buf = self._ufs.read(self._fd, self._ufs.CHUNK_SIZE)
+      if not buf:
+        break
+      buffer += buf
+      while True:
+        line, sep, buffer = buffer.partition(b'\n')
+        if not sep:
+          buffer = line
+          break
+        yield line
+    if buffer:
+      yield buffer
 
 class UPathOpener(UPathBinaryOpener):
   def write(self, data: str) -> int:
     return super().write(data.encode('utf-8'))
   def read(self, amnt: int = -1) -> str:
     return super().read(amnt).decode('utf-8')
-
+  def __iter__(self):
+    for line in super().__iter__():
+      yield line.decode('utf-8')
 
 class AsyncUPath:
   ''' A class implementing `pathlib.Path` methods for a `ufs`
@@ -235,9 +253,28 @@ class AsyncUPathBinaryOpener:
   async def write(self, data: bytes) -> int:
     assert not self.closed
     return await self._ufs.write(self._fd, data)
+  async def __aiter__(self):
+    assert not self.closed
+    buffer = b''
+    while True:
+      buf = await self._ufs.read(self._fd, self._ufs.CHUNK_SIZE)
+      if not buf:
+        break
+      buffer += buf
+      while True:
+        line, sep, buffer = buffer.partition(b'\n')
+        if not sep:
+          buffer = line
+          break
+        yield line
+    if buffer:
+      yield buffer
 
 class AsyncUPathOpener(UPathBinaryOpener):
   async def write(self, data: str) -> int:
     return await super().write(data.encode('utf-8'))
   async def read(self, amnt: int = -1) -> str:
     return (await super().read(amnt)).decode('utf-8')
+  async def __aiter__(self):
+    async for line in super().__iter__():
+      yield line.decode('utf-8')
