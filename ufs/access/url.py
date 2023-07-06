@@ -101,10 +101,11 @@ def proto_sftp(url):
 def proto_drs(url):
   from ufs.impl.drs import DRS
   from ufs.impl.prefix import Prefix
+  netloc_parsed = parse_netloc(url)
+  opts = dict(scheme='http' if netloc_parsed['port'] else 'https')
+  opts.update(parse_fragment_qs(url))
   return Prefix(
-    DRS(
-      **parse_fragment_qs(url)
-    ),
+    DRS(**opts),
     url['path']
   )
 
