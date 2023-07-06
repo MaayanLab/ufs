@@ -342,9 +342,13 @@ def test_ufs(path: UPath):
     assert fh.read() == 'hello world!'
   (path/'A').rename(path/'B')
   with (path/'B').open('a') as fa:
-    fa.write('!')
+    fa.write('\n!')
   with pytest.raises(FileNotFoundError): (path/'A').read_text()
-  assert (path/'B').read_text() == 'hello world!!'
+  with (path/'B').open('r') as fr:
+    fr = iter(fr)
+    assert next(fr) == 'hello world!\n'
+    assert next(fr) == '!'
+    with pytest.raises(StopIteration): next(fr)
   assert [p.name for p in path.iterdir()] == ['B']
   (path/'B').unlink()
   assert not (path/'B').exists()

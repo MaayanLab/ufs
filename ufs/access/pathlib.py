@@ -128,7 +128,7 @@ class UPathBinaryOpener:
         if not sep:
           buffer = line
           break
-        yield line
+        yield line + sep
     if buffer:
       yield buffer
 
@@ -266,7 +266,7 @@ class AsyncUPathBinaryOpener:
         if not sep:
           buffer = line
           break
-        yield line
+        yield line + sep
     if buffer:
       yield buffer
 
