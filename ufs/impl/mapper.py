@@ -61,8 +61,13 @@ class Mapper(UFS):
     return list(set(ufs_listing or set()) | (prefix_listing or set()))
 
   def info(self, path):
-    ufs, subpath = self._matchpath(path)
-    return ufs.info(subpath)
+    try:
+      ufs, subpath = self._matchpath(path)
+      return ufs.info(subpath)
+    except FileNotFoundError:
+      if path == SafePurePosixPath():
+        return { 'type': 'directory', 'size': 0 }
+      raise
 
   def open(self, path, mode, *, size_hint = None):
     ufs, subpath = self._matchpath(path)
