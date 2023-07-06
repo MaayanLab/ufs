@@ -119,7 +119,6 @@ def ufs_from_url(url: str, protos=protos):
     raise NotImplementedError(url_parsed['proto'])
   return protos[url_parsed['proto']](url_parsed)
 
-@contextlib.contextmanager
 def ufs_file_from_url(url: str, filename=None, protos=protos):
   '''
   The resulting ufs is a one-file-system containing only the filename of the url
