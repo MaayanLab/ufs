@@ -34,7 +34,7 @@ class SafePurePosixPath_:
     if parentpath.parts != self.parts[:len(parentpath.parts)]:
       raise RuntimeError('Not relative')
     else:
-      return SafePurePosixPath_._from_parts(('.', *self.parts[len(parentpath.parts):]))
+      return SafePurePosixPath_._from_parts(('./', *self.parts[len(parentpath.parts):]))
   def __getattr__(self, attr):
     return getattr(self._path, attr)
   def __str__(self) -> str:
