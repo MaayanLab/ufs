@@ -14,5 +14,5 @@ def mount(ufs: UFS, mount_dir: str = None, readonly: bool = False):
   except OSError:
     import logging; logging.getLogger(__name__).warning('Install libfuse for proper fuse mounting, falling back to ffuse')
     from ufs.access.ffuse import ffuse_mount as _mount
-  with _mount(ufs, mount_dir, readonly=readonly) as ufs:
-    yield ufs
+  with _mount(ufs, mount_dir, readonly=readonly) as p:
+    yield p
