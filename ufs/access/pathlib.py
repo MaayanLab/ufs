@@ -2,6 +2,7 @@
 '''
 from ufs.spec import UFS, AsyncUFS
 from ufs.utils.pathlib import SafePurePosixPath, PathLike
+from ufs.utils.io import RawBinaryIO, BufferedBinaryIO, BufferedIO, AsyncRawBinaryIO, AsyncBufferedBinaryIO, AsyncBufferedIO
 
 class UPath:
   ''' A class implementing `pathlib.Path` methods for a `ufs`
@@ -46,13 +47,22 @@ class UPath:
     except FileNotFoundError:
       return False
 
-  def open(self, mode: str, *, size_hint = None):
+  def open(self, mode: str, encoding='utf-8', newline=b'\n'):
     if 'b' in mode:
-      return UPathBinaryOpener(self._ufs, self._ufs.open(self._path, mode, size_hint=size_hint))
+      return BufferedBinaryIO(
+        UPathBinaryIO(self._ufs, self._ufs.open(self._path, mode)),
+        chunk_size=self._ufs.CHUNK_SIZE,
+        newline=newline,
+      )
     else:
       if mode.endswith('+'): mode_ = mode[:-1] + 'b+'
       else: mode_ = mode + 'b'
-      return UPathOpener(self._ufs, self._ufs.open(self._path, mode_, size_hint=size_hint))
+      return BufferedIO(
+        UPathBinaryIO(self._ufs, self._ufs.open(self._path, mode_)),
+        chunk_size=self._ufs.CHUNK_SIZE,
+        encoding=encoding,
+        newline=newline,
+      )
 
   def unlink(self):
     self._ufs.unlink(self._path)
@@ -78,68 +88,39 @@ class UPath:
   def iterdir(self):
     for name in self._ufs.ls(self._path):
       yield self / name
-  
-  def read_text(self):
-    with self.open('r') as fr:
-      return fr.read()
-
-  def write_text(self, text: str):
-    self.write_bytes(text.encode())
 
   def read_bytes(self) -> bytes:
-    with self.open('rb') as fr:
-      return fr.read()
+    fd = self._ufs.open(self._path, 'rb')
+    data = self._ufs.read(fd, -1)
+    self._ufs.close(fd)
+    return data
 
-  def write_bytes(self, text: bytes):
-    with self.open('wb', size_hint=len(text)) as fw:
-      fw.write(text)
+  def write_bytes(self, text: bytes) -> int:
+    fd = self._ufs.open(self._path, 'wb', size_hint=len(text))
+    ret = self._ufs.write(fd, text)
+    self._ufs.close(fd)
+    return ret
 
-class UPathBinaryOpener:
+  def read_text(self, encoding='utf-8'):
+    return self.read_bytes().decode(encoding)
+
+  def write_text(self, text: str, encoding='utf-8') -> int:
+    return self.write_bytes(text.encode(encoding))
+
+class UPathBinaryIO(RawBinaryIO):
   def __init__(self, ufs: UFS, fd: int):
     self._ufs = ufs
     self._fd = fd
-    self.closed = False
-  def __enter__(self):
-    return self
-  def __exit__(self, *args):
-    self.close()
-  def close(self):
-    self.closed = True
-    self._ufs.close(self._fd)
   def seek(self, amnt: int, whence: int = 0):
-    assert not self.closed
     return self._ufs.seek(self._fd, amnt, whence)
   def read(self, amnt: int = -1) -> bytes:
-    assert not self.closed
     return self._ufs.read(self._fd, amnt)
   def write(self, data: bytes) -> int:
-    assert not self.closed
     return self._ufs.write(self._fd, data)
-  def __iter__(self):
-    assert not self.closed
-    buffer = b''
-    while True:
-      buf = self._ufs.read(self._fd, self._ufs.CHUNK_SIZE)
-      if not buf:
-        break
-      buffer += buf
-      while True:
-        line, sep, buffer = buffer.partition(b'\n')
-        if not sep:
-          buffer = line
-          break
-        yield line + sep
-    if buffer:
-      yield buffer
-
-class UPathOpener(UPathBinaryOpener):
-  def write(self, data: str) -> int:
-    return super().write(data.encode('utf-8'))
-  def read(self, amnt: int = -1) -> str:
-    return super().read(amnt).decode('utf-8')
-  def __iter__(self):
-    for line in super().__iter__():
-      yield line.decode('utf-8')
+  def flush(self):
+    self._ufs.flush(self._fd)
+  def close(self):
+    self._ufs.close(self._fd)
 
 class AsyncUPath:
   ''' A class implementing `pathlib.Path` methods for a `ufs`
@@ -184,13 +165,22 @@ class AsyncUPath:
     except FileNotFoundError:
       return False
 
-  async def open(self, mode: str, *, size_hint = None):
+  async def open(self, mode: str, encoding='utf-8', newline=b'\n'):
     if 'b' in mode:
-      return AsyncUPathBinaryOpener(self._ufs, await self._ufs.open(self._path, mode, size_hint=size_hint))
+      return AsyncBufferedBinaryIO(
+        AsyncUPathBinaryIO(self._ufs, await self._ufs.open(self._path, mode)),
+        chunk_size=self._ufs.CHUNK_SIZE,
+        newline=newline,
+      )
     else:
       if mode.endswith('+'): mode_ = mode[:-1] + 'b+'
       else: mode_ = mode + 'b'
-      return AsyncUPathOpener(self._ufs, await self._ufs.open(self._path, mode_, size_hint=size_hint))
+      return AsyncBufferedIO(
+        AsyncUPathBinaryIO(self._ufs, await self._ufs.open(self._path, mode_)),
+        chunk_size=self._ufs.CHUNK_SIZE,
+        encoding=encoding,
+        newline=newline,
+      )
 
   async def unlink(self):
     await self._ufs.unlink(self._path)
@@ -216,65 +206,37 @@ class AsyncUPath:
   async def iterdir(self):
     for name in await self._ufs.ls(self._path):
       yield self / name
-  
-  async def read_text(self):
-    async with await self.open('r') as fr:
-      return await fr.read()
-
-  async def write_text(self, text: str):
-    await self.write_bytes(text.encode())
 
   async def read_bytes(self) -> bytes:
-    async with await self.open('rb') as fr:
-      return await fr.read()
+    fd = await self._ufs.open(self._path, 'rb')
+    data = await self._ufs.read(fd, -1)
+    await self._ufs.close(fd)
+    return data
 
-  async def write_bytes(self, text: bytes):
-    async with await self.open('wb', size_hint=len(text)) as fw:
-      await fw.write(text)
+  async def write_bytes(self, text: bytes) -> int:
+    fd = await self._ufs.open(self._path, 'wb', size_hint=len(text))
+    ret = await self._ufs.write(fd, text)
+    await self._ufs.close(fd)
+    return ret
 
-class AsyncUPathBinaryOpener:
+  async def read_text(self, encoding='utf-8'):
+    return await self.read_bytes().decode(encoding)
+
+  async def write_text(self, text: str, encoding='utf-8') -> int:
+    return await self.write_bytes(text.encode(encoding))
+
+
+class AsyncUPathBinaryIO(AsyncRawBinaryIO):
   def __init__(self, ufs: AsyncUFS, fd: int):
     self._ufs = ufs
     self._fd = fd
-    self.closed = False
-  async def __aenter__(self):
-    return self
-  async def __aexit__(self, *args):
-    await self.close()
-  async def close(self):
-    self.closed = True
-    await self._ufs.close(self._fd)
   async def seek(self, amnt: int, whence: int = 0):
-    assert not self.closed
     return await self._ufs.seek(self._fd, amnt, whence)
   async def read(self, amnt: int = -1) -> bytes:
-    assert not self.closed
     return await self._ufs.read(self._fd, amnt)
   async def write(self, data: bytes) -> int:
-    assert not self.closed
     return await self._ufs.write(self._fd, data)
-  async def __aiter__(self):
-    assert not self.closed
-    buffer = b''
-    while True:
-      buf = await self._ufs.read(self._fd, self._ufs.CHUNK_SIZE)
-      if not buf:
-        break
-      buffer += buf
-      while True:
-        line, sep, buffer = buffer.partition(b'\n')
-        if not sep:
-          buffer = line
-          break
-        yield line + sep
-    if buffer:
-      yield buffer
-
-class AsyncUPathOpener(UPathBinaryOpener):
-  async def write(self, data: str) -> int:
-    return await super().write(data.encode('utf-8'))
-  async def read(self, amnt: int = -1) -> str:
-    return (await super().read(amnt)).decode('utf-8')
-  async def __aiter__(self):
-    async for line in super().__iter__():
-      yield line.decode('utf-8')
+  async def flush(self):
+    await self._ufs.flush(self._fd)
+  async def close(self):
+    await self._ufs.close(self._fd)
