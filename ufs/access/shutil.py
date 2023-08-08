@@ -104,7 +104,7 @@ def movefile(src_ufs: UFS, src_path: SafePurePosixPath_, dst_ufs: UFS, dst_path:
     src_ufs.unlink(src_path)
 
 @coerce_pathlike
-async def movefile(src_ufs: AsyncUFS, src_path: SafePurePosixPath_, dst_ufs: UFS, dst_path: SafePurePosixPath_):
+async def async_movefile(src_ufs: AsyncUFS, src_path: SafePurePosixPath_, dst_ufs: UFS, dst_path: SafePurePosixPath_):
   if src_ufs is dst_ufs:
     if str(src_path) in str(dst_path):
       raise RuntimeError("Can't move path into itself")
