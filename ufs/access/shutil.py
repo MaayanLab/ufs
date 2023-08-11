@@ -74,8 +74,9 @@ def copyfile(src_ufs: UFS, src_path: SafePurePosixPath_, dst_ufs: UFS, dst_path:
   if src_ufs is dst_ufs:
     src_ufs.copy(src_path, dst_path)
   else:
+    src_info = src_ufs.info(src_path)
     src_fd = src_ufs.open(src_path, 'rb')
-    dst_fd = dst_ufs.open(dst_path, 'wb')
+    dst_fd = dst_ufs.open(dst_path, 'wb', size_hint=src_info['size'])
     while buf := src_ufs.read(src_fd, src_ufs.CHUNK_SIZE):
       dst_ufs.write(dst_fd, buf)
     dst_ufs.close(dst_fd)
@@ -86,8 +87,9 @@ async def async_copyfile(src_ufs: AsyncUFS, src_path: SafePurePosixPath_, dst_uf
   if src_ufs is dst_ufs:
     await src_ufs.copy(src_path, dst_path)
   else:
+    src_info = await src_ufs.info(src_path)
     src_fd = await src_ufs.open(src_path, 'rb')
-    dst_fd = await dst_ufs.open(dst_path, 'wb')
+    dst_fd = await dst_ufs.open(dst_path, 'wb', size_hint=src_info['size'])
     while buf := await src_ufs.read(src_fd, src_ufs.CHUNK_SIZE):
       await dst_ufs.write(dst_fd, buf)
     await dst_ufs.close(dst_fd)
