@@ -8,26 +8,29 @@ from ufs.utils.one import one
 from ufs.utils.pathlib import SafePurePosixPath
 
 class DRS(DescriptorFromAtomicMixin, UFS):
-  def __init__(self, scheme='https'):
+  def __init__(self, scheme='https', headers={}):
     super().__init__()
     self._scheme = scheme
+    self._headers = headers
 
   @staticmethod
-  def from_dict(*, scheme):
+  def from_dict(*, scheme, headers):
     return DRS(
       scheme=scheme,
+      headers=headers,
     )
 
   def to_dict(self):
     return dict(super().to_dict(),
       scheme=self._scheme,
+      headers=self._headers,
     )
 
   def _info(self, host, opaque_id, expand=False):
     ''' DRS Object Info
     '''
     url = self._scheme + '://' + host + '/ga4gh/drs/v1/objects/' + opaque_id + ('?expand=true' if expand else '')
-    req = requests.get(url)
+    req = requests.get(url, headers=self._headers)
     if req.status_code == 404:
       raise FileNotFoundError('/' + host + '/' + opaque_id)
     elif req.status_code in {401, 403}:
@@ -81,7 +84,7 @@ class DRS(DescriptorFromAtomicMixin, UFS):
         access_url = dict(url=access_method['access_url'])
       elif access_method.get('access_id'):
         _, host, opaque_id = flat_path.parts
-        req = requests.get(self._scheme + '://' + host + '/ga4gh/drs/v1/objects/' + opaque_id + '/access/' + access_method['access_id'])
+        req = requests.get(self._scheme + '://' + host + '/ga4gh/drs/v1/objects/' + opaque_id + '/access/' + access_method['access_id'], headers=self._headers)
         if req.status_code == 404:
           raise FileNotFoundError(path)
         elif req.status_code in {401, 403}:
@@ -89,10 +92,12 @@ class DRS(DescriptorFromAtomicMixin, UFS):
         elif req.status_code > 299:
           raise RuntimeError(req.status_code)
         access_url = req.json()
+        import json
+        from urllib.parse import quote
         if access_url.get('headers'):
-          import json
-          from urllib.parse import quote
-          access_url['url'] += f"#?headers={quote(json.dumps(access_url))}"
+          access_url['url'] += f"#?headers={quote(json.dumps(dict(self._headers, **access_url['headers'])))}"
+        elif self._headers:
+          access_url['url'] += f"#?headers={quote(json.dumps(self._headers))}"
       # simply attempt to fetch from the access_url using ufs_from_url
       #  this supports various providers include http, ftp, and s3
       from ufs.access.url import ufs_from_url
