@@ -56,7 +56,7 @@ class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
          self._sbfs_cache['user:'] = user = await req.json()
     return user
 
-  async def _projects(self, params: dict):
+  async def _projects(self, params: dict = {}):
     # TODO: paginate
     try:
       items = self._sbfs_cache['projects:'+str(params)]
@@ -154,13 +154,21 @@ class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
     elif n_parts == 2:
       # /{user}
       _, user = path.parts
-      if not any([proj['id'].startswith(f"{user}/") async for proj in self._projects()]):
+      if not any([
+        item_user == user
+        async for item in self._projects()
+        for item_user, _item_proj in (item['id'].split('/'),)
+      ]):
         raise FileNotFoundError(str(path))
       return { 'type': 'directory', 'size': 0 }
     elif n_parts == 3:
       # /{user}/{proj}
       _, user, name = path.parts
-      if not any([proj['id'] == f"{user}/{name}" async for proj in self._projects(params=dict(name=name))]):
+      if not any([
+        item_user == user and item_proj == name
+        async for item in self._projects()
+        for item_user, item_proj in (item['id'].split('/'),)
+      ]):
         raise FileNotFoundError(str(path))
       return { 'type': 'directory', 'size': 0 }
     elif n_parts >= 4:
