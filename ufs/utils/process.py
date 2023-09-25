@@ -14,7 +14,6 @@ This is achieved with a helper thread, it works as follows:
 import os
 import signal
 import contextlib
-import _thread as _t
 import threading as t
 import multiprocessing as mp
 from subprocess import Popen
@@ -46,7 +45,7 @@ def process_thread(queue: Queue):
     queue.task_done()
   except Empty:
     queue.put(exc)
-    _t.interrupt_main()
+    os.kill(mp.current_process().pid, signal.SIGINT)
 
 @contextlib.contextmanager
 def active_process(proc: mp.Process | mp_spawn.Process | Popen, *, terminate_signal=signal.SIGTERM):
