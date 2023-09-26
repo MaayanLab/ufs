@@ -20,8 +20,8 @@ def mount(ufs: UFS, mount_dir: str = None, readonly: bool = False):
 
 def _async_mount_thread(loop: asyncio.AbstractEventLoop, send: asyncio.Queue, completed: asyncio.Event, ufs: UFS, mount_dir: str = None, readonly: bool = False):
   try:
-    with mount(ufs, mount_dir, readonly) as p:
-      asyncio.run_coroutine_threadsafe(send.put(p), loop).result()
+    with mount(ufs, mount_dir, readonly) as mount_dir:
+      asyncio.run_coroutine_threadsafe(send.put(mount_dir), loop).result()
       asyncio.run_coroutine_threadsafe(completed.wait(), loop).result()
   except Exception as e:
     asyncio.run_coroutine_threadsafe(send.put(e), loop).result()
@@ -33,10 +33,10 @@ async def async_mount_task(ufs: UFS, mount_dir: str = None, readonly: bool = Fal
   loop = asyncio.get_event_loop()
   completed = asyncio.Event()
   recv = asyncio.Queue()
-  task = asyncio.create_task(loop.run_in_executor(None, _async_mount_thread, loop, recv, completed, ufs, mount_dir, readonly))
-  p = await recv.get()
+  task = loop.run_in_executor(None, _async_mount_thread, loop, recv, completed, ufs, mount_dir, readonly)
+  mount_dir = await recv.get()
   recv.task_done()
-  task_status.started()
+  task_status.started(mount_dir)
   try:
     err = await recv.get()
   except asyncio.CancelledError:
@@ -50,6 +50,8 @@ async def async_mount_task(ufs: UFS, mount_dir: str = None, readonly: bool = Fal
 @contextlib.asynccontextmanager
 async def async_mount(ufs: UFS, mount_dir: str = None, readonly: bool = False):
   import anyio
+  import pathlib, tempfile
+  mount_dir_resolved = pathlib.Path(tempfile.mkdtemp() if mount_dir is None else mount_dir)
   async with anyio.create_task_group() as tg:
-    await tg.start(async_mount_task, ufs, mount_dir, readonly)
-    yield
+    await tg.start(async_mount_task, ufs, mount_dir_resolved, readonly)
+    yield mount_dir_resolved
