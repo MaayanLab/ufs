@@ -14,7 +14,7 @@ from ufs.access.shutil import walk, copytree, rmtree
 
 @contextlib.contextmanager
 def ffuse_mount(ufs: UFS, mount_dir: str = None, readonly: bool = False):
-  mount_dir_resolved = pathlib.Path(mount_dir or tempfile.mkdtemp())
+  mount_dir_resolved = pathlib.Path(tempfile.mkdtemp() if mount_dir is None else mount_dir)
   mount_dir_ufs = Prefix(Local(), mount_dir_resolved)
   root = SafePurePosixPath()
   copytree(ufs, root, mount_dir_ufs, root, exists_ok=True)
@@ -33,6 +33,8 @@ def ffuse_mount(ufs: UFS, mount_dir: str = None, readonly: bool = False):
           ufs.rmdir(path)
       copytree(mount_dir_ufs, root, ufs, root, exists_ok=True)
     rmtree(mount_dir_ufs, root)
+    if mount_dir is None:
+      mount_dir_resolved.rmdir()
 
 if __name__ == '__main__':
   import os, sys, json, pathlib, threading

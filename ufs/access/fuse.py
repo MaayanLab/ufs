@@ -136,14 +136,15 @@ def fuse_mount(ufs: UFS, mount_dir: str = None, readonly: bool = False):
   from ufs.utils.process import active_process
   from ufs.utils.polling import wait_for, safe_predicate
   mp_spawn = mp.get_context('spawn')
-  mount_dir_resolved = pathlib.Path(mount_dir or tempfile.mkdtemp())
+  mount_dir_resolved = pathlib.Path(tempfile.mkdtemp() if mount_dir is None else mount_dir)
   try:
     with active_process(mp_spawn.Process(target=fuse, args=(ufs.to_dict(), str(mount_dir_resolved), readonly)), terminate_signal=signal.SIGINT):
       wait_for(functools.partial(safe_predicate, mount_dir_resolved.is_mount))
       yield mount_dir_resolved
   finally:
     wait_for(functools.partial(safe_predicate, lambda: not mount_dir_resolved.is_mount()))
-    mount_dir_resolved.rmdir()
+    if mount_dir is None:
+      mount_dir_resolved.rmdir()
 
 if __name__ == '__main__':
   import os, sys, json, pathlib, threading
