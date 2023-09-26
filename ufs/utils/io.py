@@ -44,6 +44,10 @@ class RawBinaryIO:
     pass
   def close(self):
     raise NotImplementedError()
+  def truncate(self, length: int = None):
+    raise NotImplementedError()
+  def tell(self) -> int:
+    raise NotImplementedError()
 
 class BufferedBinaryIO:
   def __init__(self, raw: RawBinaryIO, chunk_size = 4096, newline = b'\n') -> None:
@@ -99,6 +103,12 @@ class BufferedBinaryIO:
     assert not self.closed
     self.raw.flush()
 
+  def tell(self) -> int:
+    return self.pos
+
+  def truncate(self, length: int = None):
+    self.raw.truncate(self.pos if length is None else length)
+
   def close(self):
     assert not self.closed
     self.closed = True
@@ -142,6 +152,10 @@ class AsyncRawBinaryIO:
     raise NotImplementedError()
   async def flush(self):
     pass
+  async def tell(self) -> int:
+    raise NotImplementedError()
+  async def truncate(self, length: int = None):
+    raise NotImplementedError()
   async def close(self):
     raise NotImplementedError()
 
@@ -198,6 +212,12 @@ class AsyncBufferedBinaryIO:
   async def flush(self):
     assert not self.closed
     await self.raw.flush()
+
+  async def tell(self) -> int:
+    return self.pos
+
+  async def truncate(self, length: int = None):
+    await self.raw.truncate(self.pos if length is None else length)
 
   async def close(self):
     assert not self.closed
