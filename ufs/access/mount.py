@@ -52,9 +52,13 @@ async def async_mount(ufs: UFS, mount_dir: str = None, readonly: bool = False):
   import anyio
   import pathlib, tempfile
   mount_dir_resolved = pathlib.Path(tempfile.mkdtemp() if mount_dir is None else mount_dir)
-  async with anyio.create_task_group() as tg:
-    await tg.start(async_mount_task, ufs, mount_dir_resolved, readonly)
-    try:
-      yield mount_dir_resolved
-    finally:
-      tg.cancel_scope.cancel()
+  try:
+    async with anyio.create_task_group() as tg:
+      await tg.start(async_mount_task, ufs, mount_dir_resolved, readonly)
+      try:
+        yield mount_dir_resolved
+      finally:
+        tg.cancel_scope.cancel()
+  finally:
+    if mount_dir is None:
+      mount_dir_resolved.rmdir()
