@@ -14,9 +14,9 @@ from ufs.impl.local import Local
 from ufs.utils.pathlib import SafePurePosixPath
 
 class TemporaryDirectory(UFS):
-  def __init__(self, ufs: UFS = Prefix(Local(), tempfile.gettempdir())):
+  def __init__(self, ufs: UFS = None):
     super().__init__()
-    self._ufs = ufs
+    self._ufs = Prefix(Local(), tempfile.gettempdir()) if ufs is None else ufs
 
   @staticmethod
   def from_dict(*, ufs):

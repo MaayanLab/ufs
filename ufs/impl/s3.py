@@ -4,13 +4,14 @@ This is based off of s3fs from the fsspec ecosystem, but with several patches to
 '''
 
 import time
+import tempfile
+from shutil import rmtree
 from ufs.spec import UFS, FileStat
 from ufs.utils.pathlib import SafePurePosixPath_
 from ufs.impl.fsspec import FSSpec
 from s3fs import S3FileSystem
 from fsspec.implementations.cached import SimpleCacheFileSystem
 from s3fs.core import S3FileSystem, sync_wrapper
-
 class SimpleCacheFileSystemEx(SimpleCacheFileSystem):
     def _open(self, path, mode="rb", **kwargs):
         '''
@@ -265,6 +266,15 @@ class S3(FSSpec, UFS):
                           client_kwargs=dict(endpoint_url=endpoint_url)),
       )
     )
+  
+  def start(self):
+    super().start()
+    if not self._fs.storage:
+       self._fs.storage.append(tempfile.mkdtemp())
+
+  def stop(self):
+    rmtree(self._fs.storage.pop())
+    super().stop()
 
   @staticmethod
   def from_dict(*, anon, access_key, secret_access_key, endpoint_url):
