@@ -16,6 +16,10 @@ class UPath:
     return self._path.name
 
   @property
+  def stem(self):
+    return self._path.stem
+
+  @property
   def parent(self):
     return UPath(self._ufs, self._path.parent)
 
@@ -128,10 +132,14 @@ class AsyncUPath:
   def __init__(self, ufs: AsyncUFS, path: PathLike = '/') -> None:
     self._ufs = ufs
     self._path = SafePurePosixPath(path)
-  
+
   @property
   def name(self):
     return self._path.name
+
+  @property
+  def stem(self):
+    return self._path.stem
 
   @property
   def parent(self):
