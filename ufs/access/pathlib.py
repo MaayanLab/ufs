@@ -228,7 +228,7 @@ class AsyncUPath:
     return ret
 
   async def read_text(self, encoding='utf-8'):
-    return await self.read_bytes().decode(encoding)
+    return (await self.read_bytes()).decode(encoding)
 
   async def write_text(self, text: str, encoding='utf-8') -> int:
     return await self.write_bytes(text.encode(encoding))
