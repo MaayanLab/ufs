@@ -130,21 +130,20 @@ def fuse(ufs_spec: dict, mount_dir: str, readonly: bool):
 @contextlib.contextmanager
 def fuse_mount(ufs: UFS, mount_dir: str = None, readonly: bool = False):
   import signal
-  import tempfile
   import functools
   import multiprocessing as mp
   from ufs.utils.process import active_process
   from ufs.utils.polling import wait_for, safe_predicate
+  from ufs.utils.tempfile import TemporaryMountDirectory
   mp_spawn = mp.get_context('spawn')
-  mount_dir_resolved = pathlib.Path(tempfile.mkdtemp() if mount_dir is None else mount_dir)
-  try:
-    with active_process(mp_spawn.Process(target=fuse, args=(ufs.to_dict(), str(mount_dir_resolved), readonly)), terminate_signal=signal.SIGINT):
-      wait_for(functools.partial(safe_predicate, mount_dir_resolved.is_mount))
-      yield mount_dir_resolved
-  finally:
-    wait_for(functools.partial(safe_predicate, lambda: not mount_dir_resolved.is_mount()))
-    if mount_dir is None:
-      mount_dir_resolved.rmdir()
+  with TemporaryMountDirectory(mount_dir) as mount_dir:
+    try:
+      with active_process(mp_spawn.Process(target=fuse, args=(ufs.to_dict(), str(mount_dir), readonly)), terminate_signal=signal.SIGINT):
+        wait_for(functools.partial(safe_predicate, mount_dir.is_mount))
+        yield mount_dir
+    finally:
+      wait_for(functools.partial(safe_predicate, lambda: not mount_dir.is_mount()))
+
 
 if __name__ == '__main__':
   import os, sys, json, pathlib, threading
