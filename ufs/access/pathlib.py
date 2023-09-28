@@ -123,6 +123,8 @@ class UPathBinaryIO(RawBinaryIO):
     return self._ufs.write(self._fd, data)
   def flush(self):
     self._ufs.flush(self._fd)
+  def truncate(self, length: int):
+    self._ufs.truncate(self._fd, length)
   def close(self):
     self._ufs.close(self._fd)
 
@@ -246,5 +248,7 @@ class AsyncUPathBinaryIO(AsyncRawBinaryIO):
     return await self._ufs.write(self._fd, data)
   async def flush(self):
     await self._ufs.flush(self._fd)
+  async def truncate(self, length: int):
+    await self._ufs.truncate(self._fd, length)
   async def close(self):
     await self._ufs.close(self._fd)
