@@ -117,6 +117,20 @@ class UPath:
   def write_text(self, text: str, encoding='utf-8') -> int:
     return self.write_bytes(text.encode(encoding))
 
+  def rglob(self, pattern, *, case_sensitive=False):
+    import fnmatch; _fnmatch = fnmatch.fnmatchcase if case_sensitive else fnmatch.fnmatch
+    if self.is_dir():
+      Q = [p for p in self.iterdir()]
+      while Q:
+        path = Q.pop()
+        if path.is_file():
+          if _fnmatch(path.name, pattern):
+            yield path
+        elif path.is_dir():
+          if _fnmatch(path.name, pattern):
+            yield path
+          Q += [p for p in path.iterdir()]
+
 class UPathBinaryIO(RawBinaryIO):
   def __init__(self, ufs: UFS, fd: int):
     self._ufs = ufs
@@ -246,6 +260,20 @@ class AsyncUPath:
 
   async def write_text(self, text: str, encoding='utf-8') -> int:
     return await self.write_bytes(text.encode(encoding))
+
+  async def rglob(self, pattern, *, case_sensitive=False):
+    import fnmatch; _fnmatch = fnmatch.fnmatchcase if case_sensitive else fnmatch.fnmatch
+    if await self.is_dir():
+      Q = [p async for p in self.iterdir()]
+      while Q:
+        path = Q.pop()
+        if await path.is_file():
+          if _fnmatch(path.name, pattern):
+            yield path
+        elif await path.is_dir():
+          if _fnmatch(path.name, pattern):
+            yield path
+          Q += [p async for p in path.iterdir()]
 
 
 class AsyncUPathBinaryIO(AsyncRawBinaryIO):
