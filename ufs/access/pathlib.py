@@ -29,6 +29,12 @@ class UPath:
   def __repr__(self) -> str:
     return f"UPath({repr(self._ufs)}, {repr(self._path)})"
 
+  def __hash__(self):
+    return hash((self._ufs, self._path))
+
+  def __eq__(self, other):
+    return self._ufs is other._ufs and self._path == other._path
+
   def __truediv__(self, subpath: PathLike):
     return self.__class__(self._ufs, self._path / subpath)
 
@@ -74,7 +80,7 @@ class UPath:
   def mkdir(self, parents=False, exist_ok=False):
     try:
       if parents:
-        if not self.parent.exists():
+        if self != self.parent and not self.parent.exists():
           self.parent.mkdir(parents=True)
       self._ufs.mkdir(self._path)
     except FileExistsError as e:
@@ -153,6 +159,12 @@ class AsyncUPath:
   def __repr__(self) -> str:
     return f"AsyncUPath({repr(self._ufs)}, {repr(self._path)})"
 
+  def __hash__(self):
+    return hash((self._ufs, self._path))
+
+  def __eq__(self, other):
+    return self._ufs is other._ufs and self._path == other._path
+
   def __truediv__(self, subpath: PathLike):
     return self.__class__(self._ufs, self._path / subpath)
 
@@ -198,7 +210,7 @@ class AsyncUPath:
   async def mkdir(self, parents=False, exist_ok=False):
     try:
       if parents:
-        if not await self.parent.exists():
+        if self != self.parent and not await self.parent.exists():
           await self.parent.mkdir(parents=True)
       await self._ufs.mkdir(self._path)
     except FileExistsError as e:
