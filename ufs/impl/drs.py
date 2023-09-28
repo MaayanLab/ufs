@@ -57,12 +57,12 @@ class DRS(DescriptorFromAtomicMixin, UFS):
 
   def info(self, path):
     flat_path, info = self._flatten(path)
+    _, host, opaque_id = flat_path.parts
     if info.get('contents') is not None:
       return { 'type': 'directory', 'size': 0 }
     elif info.get('size') is None:
-      _, host, opaque_id = flat_path.parts
       info = self._info(host, opaque_id, expand=False)
-    return { 'type': 'file', 'size': info['size'] }
+    return { 'type': 'file', 'size': info['size'], 'drs': f"drs://{host}/{opaque_id}" }
 
   def ls(self, path):
     _flat_path, info = self._flatten(path)
