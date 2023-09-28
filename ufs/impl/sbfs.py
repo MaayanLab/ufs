@@ -14,19 +14,21 @@ logger = logging.getLogger(__name__)
 class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
   CHUNK_SIZE = 8192
 
-  def __init__(self, auth_token: str, api_endpoint='https://cavatica-api.sbgenomics.com', ttl=60):
+  def __init__(self, auth_token: str, api_endpoint='https://cavatica-api.sbgenomics.com', drs_endpoint='drs://cavatica-ga4gh-api.sbgenomics.com', ttl=60):
     super().__init__()
     assert auth_token is not None, 'SBFS auth_token is required'
     self._auth_token = auth_token
     self._api_endpoint = api_endpoint
+    self._drs_endpoint = drs_endpoint
     self._ttl = ttl
     self._sbfs_cache = TTLCacheStore(ttl=self._ttl)
 
   @staticmethod
-  def from_dict(*, auth_token, api_endpoint, ttl):
+  def from_dict(*, auth_token, api_endpoint, drs_endpoint, ttl):
     return SBFS(
       auth_token=auth_token,
       api_endpoint=api_endpoint,
+      drs_endpoint=drs_endpoint,
       ttl=ttl,
     )
 
@@ -34,6 +36,7 @@ class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
     return dict(super().to_dict(),
       auth_token=self._auth_token,
       api_endpoint=self._api_endpoint,
+      drs_endpoint=self._drs_endpoint,
       ttl=self._ttl,
     )
 
@@ -180,6 +183,8 @@ class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
         details = await self._file_details(info)
         logger.info(f"{details=}")
         ret = { 'type': 'file', 'size': details['size'] }
+        if self._drs_endpoint:
+          ret['drs'] = f"{self._drs_endpoint}/{info['id']}"
         try: ret['ctime'] = datetime.fromisoformat(details['created_on']).timestamp()
         except: pass
         try: ret['mtime'] = datetime.fromisoformat(details['modified_on']).timestamp()
