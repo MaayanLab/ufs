@@ -41,8 +41,13 @@ class SafePurePosixPath_:
     return str(self._path)
   def __repr__(self) -> str:
     return f"SafePurePosixPath({repr(str(self._path))})"
-  def as_path(self) -> pathlib.Path:
-    return pathlib.Path(self._path)
+  def as_path(self, root = None) -> pathlib.Path:
+    if root is None:
+      import os
+      if os.name == 'posix':
+        return self._path
+      root = pathlib.Path('/').absolute()
+    return root / self._path.relative_to('/')
 
 PathLike: t.TypeAlias =  bytes | str | pathlib.PurePosixPath | SafePurePosixPath_
 
