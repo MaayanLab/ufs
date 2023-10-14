@@ -6,11 +6,14 @@ import itertools as it
 from queue import Queue
 from ufs.utils.pathlib import SafePurePosixPath_
 
-FileOpenMode: t.TypeAlias = t.Literal['rb', 'wb', 'ab', 'rb+', 'ab+']
-FileSeekWhence: t.TypeAlias = t.Literal[0, 1, 2]
+TypedDict = t.TypedDict if getattr(t, 'TypedDict', None) else dict
 
-class FileStat(t.TypedDict):
-  type: t.Literal['file', 'directory']
+FileOpenMode = t.Literal['rb', 'wb', 'ab', 'rb+', 'ab+'] if getattr(t, 'Literal', None) else str
+FileSeekWhence = t.Literal[0, 1, 2] if getattr(t, 'Literal', None) else int
+FileType = t.Literal['file', 'directory'] if getattr(t, 'Literal', None) else str
+
+class FileStat(TypedDict):
+  type: FileType
   size: int
   atime: t.Optional[float]
   ctime: t.Optional[float]
@@ -132,12 +135,12 @@ class UFS:
     if cls.from_dict is UFS.from_dict: return cls(**kwargs)
     else: return cls.from_dict(**kwargs)
 
-  def to_dict(self) -> dict[str, t.Any]:
+  def to_dict(self) -> t.Dict[str, t.Any]:
     cls = self.__class__
     return dict(cls=f"{cls.__module__}.{cls.__name__}")
 
   # essential
-  def ls(self, path: SafePurePosixPath_) -> list[str]:
+  def ls(self, path: SafePurePosixPath_) -> t.List[str]:
     raise NotImplementedError()
   def info(self, path: SafePurePosixPath_) -> FileStat:
     raise NotImplementedError()
@@ -183,7 +186,9 @@ class UFS:
       raise IsADirectoryError(str(src))
     src_fd = self.open(src, 'rb')
     dst_fd = self.open(dst, 'wb', size_hint=src_info['size'])
-    while buf := self.read(src_fd, self.CHUNK_SIZE):
+    while True:
+      buf = self.read(src_fd, self.CHUNK_SIZE)
+      if not buf: break
       self.write(dst_fd, buf)
     self.close(dst)
     self.close(src)
@@ -318,12 +323,12 @@ class AsyncUFS:
     if cls.from_dict is UFS.from_dict: return cls(**kwargs)
     else: return cls.from_dict(**kwargs)
 
-  def to_dict(self) -> dict[str, t.Any]:
+  def to_dict(self) -> t.Dict[str, t.Any]:
     cls = self.__class__
     return dict(cls=f"{cls.__module__}.{cls.__name__}")
 
   # essential
-  async def ls(self, path: SafePurePosixPath_) -> list[str]:
+  async def ls(self, path: SafePurePosixPath_) -> t.List[str]:
     raise NotImplementedError()
   async def info(self, path: SafePurePosixPath_) -> FileStat:
     raise NotImplementedError()
@@ -368,7 +373,9 @@ class AsyncUFS:
       raise IsADirectoryError(str(src))
     src_fd = await self.open(src, 'rb')
     dst_fd = await self.open(dst, 'wb', size_hint=src_info['size'])
-    while buf := await self.read(src_fd, self.CHUNK_SIZE):
+    while True:
+      buf = await self.read(src_fd, self.CHUNK_SIZE)
+      if not buf: break
       await self.write(dst_fd, buf)
     await self.close(dst)
     await self.close(src)

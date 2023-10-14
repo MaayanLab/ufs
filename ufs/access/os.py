@@ -13,11 +13,11 @@ from ufs.utils.pathlib import SafePurePosixPath, pathparent
 
 logger = logging.getLogger(__name__)
 
-FileDescriptorLike: t.TypeAlias = int
-StrPath: t.TypeAlias = str | os.PathLike[str]
-StrOrBytesPath: t.TypeAlias = str | bytes | os.PathLike[str] | os.PathLike[bytes]
-FileDescriptorOrPath: t.TypeAlias = int | StrOrBytesPath
-ReadableBuffer: t.TypeAlias = bytes
+FileDescriptorLike = int
+StrPath = t.Union[str, os.PathLike]
+StrOrBytesPath = t.Union[str, bytes, os.PathLike]
+FileDescriptorOrPath = t.Union[int, StrOrBytesPath]
+ReadableBuffer = bytes
 
 @contextlib.contextmanager
 def oserror(path: str = None):
@@ -47,7 +47,7 @@ class UOS:
     path: FileDescriptorOrPath,
     mode: int,
     *,
-    dir_fd: int | None = None,
+    dir_fd: t.Optional[int] = None,
     effective_ids: bool = False,
     follow_symlinks: bool = True
   ) -> bool:
@@ -60,7 +60,7 @@ class UOS:
     path: FileDescriptorOrPath,
     mode: int,
     *,
-    dir_fd: int | None = None,
+    dir_fd: t.Optional[int] = None,
     follow_symlinks: bool = True
   ) -> None:
     pass
@@ -71,7 +71,7 @@ class UOS:
     uid: int,
     gid: int,
     *,
-    dir_fd: int | None = None,
+    dir_fd: t.Optional[int] = None,
     follow_symlinks: bool = True
   ) -> None:
     pass
@@ -82,7 +82,7 @@ class UOS:
     flags: int,
     perms: int = 511,
     *,
-    dir_fd: int | None = None
+    dir_fd: t.Optional[int] = None
   ) -> int:
     if flags & os.O_TRUNC: mode = 'wb'
     elif flags & os.O_APPEND: mode = 'ab' + ('+' if flags & os.O_RDWR else '')
@@ -91,7 +91,7 @@ class UOS:
     # elif flags & os.O_RDONLY: mode = 'rb'
     else: mode = 'rb'
     with oserror(path):
-      logger.debug(f"open({path=}, {mode=}) {flags=}")
+      logger.debug(f"open({path}, {mode}) {flags}")
       return self._ufs.open(SafePurePosixPath(path), mode)
 
   def fsync(
@@ -110,7 +110,7 @@ class UOS:
     self,
     path: StrOrBytesPath,
     *,
-    dir_fd: int | None = None
+    dir_fd: t.Optional[int] = None
   ) -> os.stat_result:
     with oserror(path):
       info = self._ufs.info(SafePurePosixPath(path))
@@ -133,8 +133,8 @@ class UOS:
     src: StrOrBytesPath,
     dst: StrOrBytesPath,
     *,
-    src_dir_fd: int | None = None,
-    dst_dir_fd: int | None = None,
+    src_dir_fd: t.Optional[int] = None,
+    dst_dir_fd: t.Optional[int] = None,
     follow_symlinks: bool = True
   ) -> None:
     pass
@@ -144,7 +144,7 @@ class UOS:
     path: StrOrBytesPath,
     mode: int = 511,
     *,
-    dir_fd: int | None = None
+    dir_fd: t.Optional[int] = None
   ) -> None:
     with oserror(path):
       self._ufs.mkdir(SafePurePosixPath(path))
@@ -155,7 +155,7 @@ class UOS:
     mode: int = 384,
     device: int = 0,
     *,
-    dir_fd: int | None = None
+    dir_fd: t.Optional[int] = None
   ) -> None:
     pass
 
@@ -163,7 +163,7 @@ class UOS:
     self,
     path: str,
     *,
-    dir_fd: int | None = None
+    dir_fd: t.Optional[int] = None
   ) -> str:
     pass
   
@@ -171,7 +171,7 @@ class UOS:
     self,
     path: StrOrBytesPath,
     *,
-    dir_fd: int | None = None
+    dir_fd: t.Optional[int] = None
   ) -> None:
     with oserror(path):
       self._ufs.rmdir(SafePurePosixPath(path))
@@ -180,7 +180,7 @@ class UOS:
     self,
     path: StrOrBytesPath,
     *,
-    dir_fd: int | None = None
+    dir_fd: t.Optional[int] = None
   ) -> None:
     with oserror(path):
       self._ufs.unlink(SafePurePosixPath(path))
@@ -188,10 +188,10 @@ class UOS:
   def utime(
     self,
     path: FileDescriptorOrPath,
-    times: tuple[int, int] | tuple[float, float] | None = None,
+    times: t.Union[t.Tuple[int, int], t.Tuple[float, float], None] = None,
     *,
-    ns: tuple[int, int] = ...,
-    dir_fd: int | None = None,
+    ns: t.Tuple[int, int] = ...,
+    dir_fd: t.Optional[int] = None,
     follow_symlinks: bool = True
   ) -> None:
     pass
@@ -201,7 +201,6 @@ class UOS:
     __fd: int,
     __position: int,
     __how: int = 0,
-    /
   ) -> int:
     return self._ufs.seek(__fd, __position, __how)
 
@@ -209,14 +208,13 @@ class UOS:
     self,
     __fd: int,
     __length: int,
-    /
   ) -> bytes:
     return self._ufs.read(__fd, __length)
   
   def listdir(
     self,
-    path: StrPath | None = None
-  ) -> list[str]:
+    path: t.Optional[StrPath] = None
+  ) -> t.List[str]:
     with oserror(path):
       return self._ufs.ls(SafePurePosixPath(path))
   
@@ -231,8 +229,8 @@ class UOS:
     src: StrOrBytesPath,
     dst: StrOrBytesPath,
     *,
-    src_dir_fd: int | None = None,
-    dst_dir_fd: int | None = None
+    src_dir_fd: t.Optional[int] = None,
+    dst_dir_fd: t.Optional[int] = None
   ) -> None:
     try:
       self._ufs.rename(SafePurePosixPath(src), SafePurePosixPath(dst))
@@ -259,7 +257,7 @@ class UOS:
     dst: StrOrBytesPath,
     target_is_directory: bool = False,
     *,
-    dir_fd: int | None = None
+    dir_fd: t.Optional[int] = None
   ) -> None:
     pass
 
@@ -267,7 +265,6 @@ class UOS:
     self,
     __fd: int,
     __data: ReadableBuffer,
-      /
   ) -> int:
     return self._ufs.write(__fd, __data)
 

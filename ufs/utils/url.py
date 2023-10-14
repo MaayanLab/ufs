@@ -3,7 +3,9 @@ import json
 import typing as t
 from ufs.utils.one import one
 
-class URLParsed(t.TypedDict):
+TypedDict = t.TypedDict if getattr(t, 'TypedDict', None) else dict
+
+class URLParsed(TypedDict):
   proto: t.Optional[str]
   path: str
   fragment: t.Optional[str]
@@ -22,7 +24,7 @@ def parse_url(url) -> URLParsed:
   return m.groupdict()
 
 
-class NetlocParsed(t.TypedDict):
+class NetlocParsed(TypedDict):
   username: t.Optional[str]
   password: t.Optional[str]
   host: t.Optional[str]

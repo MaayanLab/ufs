@@ -7,6 +7,7 @@ import pathlib
 import contextlib
 import logging
 import traceback
+import typing as t
 
 from ufs.access.os import UOS
 from ufs.spec import UFS
@@ -64,7 +65,7 @@ class USFTPHandle(paramiko.SFTPHandle):
   def write(self, offset, data):
     try:
       seek_ret = self.server._uos.lseek(self.fd, offset)
-      logger.error(f"-> {seek_ret=}")
+      logger.error(f"-> {seek_ret}")
       write_ret = self.server._uos.write(self.fd, data)
       logger.error(f"-> {write_ret}")
     except OSError as e:
@@ -103,7 +104,7 @@ class USFTPServer(paramiko.SFTPServerInterface):
         )
         for fname in self._server._uos.listdir(path)
       ]
-      logger.error(f"list_folder {ret=}")
+      logger.error(f"list_folder {ret}")
       return ret
     except OSError as e:
       return paramiko.SFTPServer.convert_errno(e.errno)
@@ -184,7 +185,7 @@ class USFTPServer(paramiko.SFTPServerInterface):
   def symlink(self, target_path, path) -> int:
     return paramiko.SFTPServer.convert_errno(errno.ENOTSUP)
 
-  def readlink(self, path) -> str | int:
+  def readlink(self, path) -> t.Union[str, int]:
     return paramiko.SFTPServer.convert_errno(errno.ENOENT)
 
 def ufs_via_sftp(ufs: dict, host: str, port: int, username: str, password: str = None, keyfile: str = None, BACKLOG = 10):

@@ -36,21 +36,22 @@ class SimpleCacheFileSystemEx(SimpleCacheFileSystem):
 
         self._mkcache()
         if self.compression:
-            with self.fs._open(path, **kwargs) as f, open(fn, "wb") as f2:
-                if isinstance(f, AbstractBufferedFile):
-                    # want no type of caching if just downloading whole thing
-                    f.cache = BaseCache(0, f.cache.fetcher, f.size)
-                comp = (
-                    infer_compression(path)
-                    if self.compression == "infer"
-                    else self.compression
-                )
-                f = compr[comp](f, mode="rb")
-                data = True
-                while data:
-                    block = getattr(f, "blocksize", 5 * 2**20)
-                    data = f.read(block)
-                    f2.write(data)
+            with self.fs._open(path, **kwargs) as f:
+                with open(fn, "wb") as f2:
+                    if isinstance(f, AbstractBufferedFile):
+                        # want no type of caching if just downloading whole thing
+                        f.cache = BaseCache(0, f.cache.fetcher, f.size)
+                    comp = (
+                        infer_compression(path)
+                        if self.compression == "infer"
+                        else self.compression
+                    )
+                    f = compr[comp](f, mode="rb")
+                    data = True
+                    while data:
+                        block = getattr(f, "blocksize", 5 * 2**20)
+                        data = f.read(block)
+                        f2.write(data)
         else:
             self.fs.get(path, fn)
         return self._open(path, mode)

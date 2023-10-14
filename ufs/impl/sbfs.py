@@ -181,7 +181,7 @@ class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
         return { 'type': 'directory', 'size': 0 }
       elif info['type'] == 'file':
         details = await self._file_details(info)
-        logger.info(f"{details=}")
+        logger.info(f"{details}")
         ret = { 'type': 'file', 'size': details['size'] }
         if self._drs_endpoint:
           ret['drs'] = f"{self._drs_endpoint}/{info['id']}"
@@ -308,7 +308,7 @@ class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
         logger.debug(await req.read())
     else:
       info = await self._file_info(path)
-      logger.debug(f"{info=}")
+      logger.debug(f"{info}")
       if info['type'] != 'folder':
         raise NotADirectoryError(path)
       await self._delete(info)

@@ -4,6 +4,7 @@ import sys
 import flask
 import hashlib
 import datetime as dt
+import typing as t
 from ufs.spec import UFS
 from ufs.impl.tempdir import TemporaryDirectory
 from ufs.utils.pathlib import SafePurePosixPath
@@ -17,7 +18,7 @@ def RFC3339(ts = None):
     ts = dt.datetime.now()
   return ts.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-def flask_ufs_for_blob(ufs: UFS, tmpdir: UFS, *, app: flask.Flask | flask.Blueprint, public_url: str):
+def flask_ufs_for_blob(ufs: UFS, tmpdir: UFS, *, app: t.Union[flask.Flask, flask.Blueprint], public_url: str):
   created_at = RFC3339()
   @app.post('/ufs/blob/v1/objects')
   def blob_objects_post():

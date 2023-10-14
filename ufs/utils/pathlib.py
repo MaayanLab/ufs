@@ -49,7 +49,7 @@ class SafePurePosixPath_:
       root = pathlib.Path('/').absolute()
     return root / self._path.relative_to('/')
 
-PathLike: t.TypeAlias =  bytes | str | pathlib.PurePosixPath | SafePurePosixPath_
+PathLike = t.Union[bytes, str, pathlib.PurePosixPath, SafePurePosixPath_]
 
 def SafePurePosixPath(path: PathLike = None) -> SafePurePosixPath_:
   ''' This ensures the path will always be /something

@@ -2,9 +2,10 @@
 A prefix tree for identification of the correct
  split given a list of path prefixes.
 '''
+import typing as t
 from ufs.utils.pathlib import SafePurePosixPath, PathLike, coerce_pathlike
 
-def create_prefix_tree_from_paths(paths: list[PathLike]):
+def create_prefix_tree_from_paths(paths: t.List[PathLike]):
   ''' The prefix tree turns a flat listing
   `a/b/c`
   into

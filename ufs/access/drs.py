@@ -51,7 +51,7 @@ def index_ufs_for_drs(ufs: UFS, index: t.MutableMapping[str, t.Any] = {}):
       bundles[str(path.parent)].append(sha256sum)
   return index
 
-def flask_ufs_for_drs(ufs: UFS, index: t.Mapping[str, t.Any], *, app: flask.Flask | flask.Blueprint, public_url: str):
+def flask_ufs_for_drs(ufs: UFS, index: t.Mapping[str, t.Any], *, app: t.Union[flask.Flask, flask.Blueprint], public_url: str):
   objects = index['objects']
   bundles = index['bundles']
   created_at = RFC3339()

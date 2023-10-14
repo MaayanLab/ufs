@@ -15,7 +15,7 @@ class TTLValue:
 class TTLCacheStore(t.Generic[T]):
   def __init__(self, ttl=60):
     self._ttl = ttl
-    self._cache: dict[str, TTLValue] = {}
+    self._cache: t.Dict[str, TTLValue] = {}
   
   def __getitem__(self, key: str) -> t.Any:
     item = self._cache[key]

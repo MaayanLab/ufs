@@ -14,7 +14,8 @@ This is achieved with a helper thread, it works as follows:
 import os
 import signal
 import contextlib
-import threading as t
+import threading
+import typing as t
 import multiprocessing as mp
 from subprocess import Popen
 from queue import Queue, Empty
@@ -27,7 +28,7 @@ class ProcessExitException(Exception):
     self.exitcode = exitcode
 
 def process_thread(queue: Queue):
-  proc: mp.Process | mp_spawn.Process | Popen = queue.get()
+  proc: t.Union[mp.Process, mp_spawn.Process, Popen] = queue.get()
   try:
     if isinstance(proc, mp.Process) or isinstance(proc, mp_spawn.Process):
       proc.start()
@@ -48,9 +49,9 @@ def process_thread(queue: Queue):
     os.kill(mp.current_process().pid, signal.SIGINT)
 
 @contextlib.contextmanager
-def active_process(proc: mp.Process | mp_spawn.Process | Popen, *, terminate_signal=signal.SIGTERM):
+def active_process(proc: t.Union[mp.Process, mp_spawn.Process, Popen], *, terminate_signal=signal.SIGTERM):
   queue = Queue()
-  thread = t.Thread(
+  thread = threading.Thread(
     target=process_thread,
     args=(queue,),
   )
@@ -70,9 +71,11 @@ def active_process(proc: mp.Process | mp_spawn.Process | Popen, *, terminate_sig
     if isinstance(proc, mp.Process) or isinstance(proc, mp_spawn.Process):
       if proc.is_alive():
         os.kill(proc.pid, terminate_signal)
+        proc.join()
     elif isinstance(proc, Popen):
       if proc.poll() is None:
         os.kill(proc.pid, terminate_signal)
+        proc.wait()
     else:
       raise NotImplementedError(type(proc))
     thread.join()

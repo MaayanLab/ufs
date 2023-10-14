@@ -58,7 +58,9 @@ class Writecache(UFS):
       fr = self._ufs.open(path, 'rb')
       fd = next(self._cfd)
       fw = self._cache.open(SafePurePosixPath(f"/{fd}"), mode='wb+')
-      while buf := self._ufs.read(fr, self.CHUNK_SIZE):
+      while True:
+        buf = self._ufs.read(fr, self.CHUNK_SIZE)
+        if not buf: break
         self._cache.write(fw, buf)
       self._ufs.close(fr)
       if 'r' in mode: self._cache.seek(fw, 0)
@@ -88,7 +90,9 @@ class Writecache(UFS):
       info = self._cache.info(SafePurePosixPath(f"/{fd}"))
       fw = self._ufs.open(path, 'wb', size_hint=info['size'])
       self._cache.seek(fh, 0)
-      while buf := self._cache.read(fh, self.CHUNK_SIZE):
+      while True:
+        buf = self._cache.read(fh, self.CHUNK_SIZE)
+        if not buf: break
         self._ufs.write(fw, buf)
       self._cache.close(fh)
       self._cache.unlink(SafePurePosixPath(f"/{fd}"))

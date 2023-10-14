@@ -1,8 +1,9 @@
 ''' Turn any AsyncUFS into a regular UFS by running it in a dedicated event loop thread.
 '''
+import queue
 import asyncio
 import itertools
-import threading as t
+import threading
 from ufs.spec import UFS, AsyncUFS
 
 class AsyncExecutor:
@@ -34,7 +35,10 @@ async def _run_and_return(ufs, send, task_id, op, args, kwargs):
   else:
     await send.put([task_id, res, None])
 
-async def async_ufs_proc(send: asyncio.PriorityQueue, recv: asyncio.PriorityQueue, ufs_spec):
+async def async_ufs_proc(reply: queue.Queue, ufs_spec):
+  loop = asyncio.get_event_loop()
+  send, recv = asyncio.PriorityQueue(), asyncio.PriorityQueue()
+  reply.put_nowait((loop, send, recv))
   ufs = UFS.from_dict(**ufs_spec)
   async with AsyncExecutor() as exec:
     while True:
@@ -46,8 +50,8 @@ async def async_ufs_proc(send: asyncio.PriorityQueue, recv: asyncio.PriorityQueu
       exec.submit(_run_and_return, ufs, send, *msg)
       recv.task_done()
 
-def event_loop_thread(loop, send: asyncio.PriorityQueue, recv: asyncio.PriorityQueue, ufs_spec):
-  loop.run_until_complete(async_ufs_proc(send, recv, ufs_spec))
+def event_loop_thread(send: queue.Queue, ufs_spec):
+  asyncio.run(async_ufs_proc(send, ufs_spec))
 
 class Sync(UFS):
   def __init__(self, ufs: AsyncUFS):
@@ -124,13 +128,14 @@ class Sync(UFS):
 
   def start(self):
     if not hasattr(self, '_loop'):
-      self._loop = asyncio.new_event_loop()
-      self._send, self._recv = asyncio.PriorityQueue(), asyncio.PriorityQueue()
-      self._loop_thread = t.Thread(
+      reply = queue.Queue()
+      self._loop_thread = threading.Thread(
         target=event_loop_thread,
-        args=(self._loop, self._recv, self._send, self._ufs.to_dict()),
+        args=(reply, self._ufs.to_dict()),
       )
       self._loop_thread.start()
+      self._loop, self._recv, self._send = reply.get()
+      reply.task_done()
       self._forward('start')
 
   def stop(self):

@@ -111,12 +111,12 @@ class RClone(DescriptorFromAtomicMixin, UFS):
       if req.status_code != 200:
         raise FileNotFoundError()
       ret = req.json()
-      logger.info(f"{ret=}")
+      logger.info(f"{ret}")
       try:
         item = next(iter(item for item in ret['list'] if item['Name'] == path.name))
       except StopIteration:
         raise FileNotFoundError()
-      logger.info(f"{item=}")
+      logger.info(f"{item}")
       if item['IsDir']:
         return {
           'type': 'directory',

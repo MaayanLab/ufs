@@ -31,20 +31,20 @@ def _async_mount_thread(loop: asyncio.AbstractEventLoop, send: asyncio.Queue, co
     asyncio.run_coroutine_threadsafe(send.put(mount_dir), loop).result()
     asyncio.run_coroutine_threadsafe(completed.wait(), loop).result()
 
+async def to_thread(loop, func, *args):
+  return await loop.run_in_executor(None, func, *args)
+
 @contextlib.asynccontextmanager
 async def async_mount(ufs: UFS, mount_dir: str = None, readonly: bool = False, fuse: bool = None):
   loop = asyncio.get_event_loop()
   completed = asyncio.Event()
   recv = asyncio.Queue()
-  async with asyncio.TaskGroup() as tg:
-    mount_task = tg.create_task(asyncio.to_thread(_async_mount_thread, loop, recv, completed, ufs, mount_dir, readonly, fuse))
-    mount_dir = await recv.get()
-    recv.task_done()
-    try:
-      yield mount_dir
-    except:
-      completed.set()
-      await mount_task
-      raise
-    else:
-      completed.set()
+  mount_task = asyncio.create_task(to_thread(loop, _async_mount_thread, loop, recv, completed, ufs, mount_dir, readonly, fuse))
+  mount_task.add_done_callback(asyncio.Task.result)
+  mount_dir = await recv.get()
+  recv.task_done()
+  try:
+    yield mount_dir
+  finally:
+    completed.set()
+    await mount_task
