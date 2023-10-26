@@ -7,8 +7,10 @@ import json
 import socket
 import logging
 import requests
+import functools
 from ufs.spec import UFS, DescriptorFromAtomicMixin, ReadableIterator
 from ufs.utils.pathlib import SafePurePosixPath
+from ufs.utils.polling import wait_for, safe_predicate
 from subprocess import Popen
 
 logger = logging.getLogger(__name__)
@@ -57,8 +59,7 @@ class RClone(DescriptorFromAtomicMixin, UFS):
         '--rc-user', self._user,
         '--rc-pass', self._pass,
       ], env=self._env, stderr=sys.stderr, stdout=sys.stdout)
-      # TODO: wait until it's ready
-      import time; time.sleep(1)
+      wait_for(functools.partial(safe_predicate, lambda: requests.post(f"http://{self._host}:{self._port}/config/listremotes", auth=(self._user, self._pass)).status_code == 200))
 
   def stop(self):
     if hasattr(self, '_proc'):
