@@ -16,7 +16,7 @@ class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
 
   def __init__(self, auth_token: str, api_endpoint='https://cavatica-api.sbgenomics.com', drs_endpoint='drs://cavatica-ga4gh-api.sbgenomics.com', ttl=60):
     super().__init__()
-    assert auth_token is not None, 'SBFS auth_token is required'
+    assert auth_token, 'SBFS auth_token is required'
     self._auth_token = auth_token
     self._api_endpoint = api_endpoint
     self._drs_endpoint = drs_endpoint
