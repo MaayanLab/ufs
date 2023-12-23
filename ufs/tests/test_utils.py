@@ -47,3 +47,17 @@ def test_prefix_tree():
   assert list_prefix_tree(t, 'a') == (SafePurePosixPath(), SafePurePosixPath('a'), {'b', 'd'})
   assert list_prefix_tree(t, 'b') == (SafePurePosixPath(), SafePurePosixPath('b'), None)
   assert list_prefix_tree(t, 'a/d/e') == (SafePurePosixPath('a/d'), SafePurePosixPath('e'), None)
+
+def test_pathlib_rmtree():
+  import pathlib
+  import tempfile
+  from ufs.utils.pathlib import rmtree
+  with tempfile.TemporaryDirectory() as tmpdir:
+    tmpdir = pathlib.Path(tmpdir)
+    (tmpdir/'a').write_text('b')
+    (tmpdir/'c').mkdir()
+    (tmpdir/'c'/'d').write_text('e')
+    (tmpdir/'c'/'f').mkdir()
+    (tmpdir/'c'/'f'/'g').write_text('h')
+    rmtree(tmpdir/'c')
+    assert [p.name for p in tmpdir.iterdir()] == ['a']
