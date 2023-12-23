@@ -42,9 +42,11 @@ def index_ufs_for_drs(ufs: UFS, index: t.MutableMapping[str, t.Any] = {}):
       sha256sums[str(path)] = sha256sum = sha256(ufs.cat(path))
       objects[sha256sum] = dict(path=path, info=info)
     elif info['type'] == 'directory':
-      if str(path.parent) not in bundles: continue # this would happen with an empty directory (don't make empty bundles)
-      sha256sums[str(path)] = sha256sum = sha256(map(str.encode, bundles[str(path.parent)]))
+      if str(path) not in bundles: continue # this would happen with an empty directory (don't make empty bundles)
+      sha256sums[str(path)] = sha256sum = sha256(map(str.encode, bundles[str(path)]))
       objects[sha256sum] = dict(path=path, info=info)
+    else:
+      raise NotImplementedError(info['type'])
     if path != path.parent: # don't add root to itself
       if str(path.parent) not in bundles:
         bundles[str(path.parent)] = []
