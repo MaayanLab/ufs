@@ -19,8 +19,9 @@ def ufs():
 def drs_server(ufs):
   try:
     import flask
+    import gunicorn
   except ImportError:
-    pytest.skip('Install flask for drs server functionality')
+    pytest.skip('Install flask & gunicorn for drs server functionality')
   else:
     from ufs.utils.socket import autosocket
     from ufs.access.drs import serve_ufs_via_drs
