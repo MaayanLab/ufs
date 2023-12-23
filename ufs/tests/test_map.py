@@ -10,5 +10,6 @@ def test_map(ufs: UFS):
     'f': {'g': 'h'},
   }
   assert M['c']['f']['g'] == 'h'
+  assert sorted(M['c']) == ['d', 'f']
   del M['c']
   assert list(M) == ['a']
