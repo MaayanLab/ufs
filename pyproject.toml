@@ -7,16 +7,20 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.8"
-flask = {version = "^3.0.0", optional = true}
-fsspec = {version = "^2023.10.0", optional = true}
-fusepy = {version = "^3.0.1", optional = true}
-gunicorn = {version = "^21.2.0", optional = true}
-paramiko = {version = "^3.3.1", optional = true}
-pyftpdlib = {version = "^1.5.9", optional = true}
-s3fs = {version = "^2023.10.0", optional = true}
-requests = {version = "^2.31.0", optional = true}
-minio = {version = "^7.2.0", optional = true}
 
+[tool.poetry.group.optional]
+optional = true
+
+[tool.poetry.group.optional.dependencies]
+aiohttp = "^3.9.1"
+flask = "^3.0.0"
+fsspec = "^2023.10.0"
+fusepy = "^3.0.1"
+gunicorn = "^21.2.0"
+minio = "^7.2.0"
+paramiko = "^3.3.1"
+pyftpdlib = "^1.5.9"
+requests = "^2.31.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.3"
@@ -24,15 +28,28 @@ pytest-timeout = "^2.2.0"
 pytest-asyncio = "^0.21.1"
 
 [tool.poetry.extras]
+blob_server = ["flask", "gunicorn"]
+drs = ["requests"]
+drs_server = ["flask", "gunicorn"]
+fsspec = ["fsspec"]
+ftp = ["pyftpdlib"]
+fuse = ["fusepy"]
+http = ["requests"]
+rclone = ["requests"]
+s3 = ["minio"]
+sbfs = ["aiohttp"]
+sftp = ["paramiko"]
+sftp_server = ["paramiko"]
 complete = [
+  "aiohttp",
   "flask",
   "fsspec",
   "fusepy",
   "gunicorn",
+  "minio",
   "paramiko",
   "pyftpdlib",
   "requests",
-  "minio"
 ]
 
 [build-system]
