@@ -1,4 +1,5 @@
 import pytest
+import contextlib
 from ufs.spec import UFS
 
 try: import paramiko
@@ -41,9 +42,9 @@ def sftp_server(ufs: UFS):
       wait_for(lambda: nc_z(host, port))
       yield opts
 
-import contextlib
 @contextlib.contextmanager
 def sftp_client(sftp_server):
+  if paramiko is None: raise ModuleNotFoundError('paramiko')
   ssh = paramiko.SSHClient()
   ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
   ssh.connect(

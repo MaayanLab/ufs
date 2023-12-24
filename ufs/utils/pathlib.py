@@ -30,13 +30,20 @@ class SafePurePosixPath_:
       elif part in ['//', '/', '.', '']: pass
       else: p = p / part
     return SafePurePosixPath_(p)
-  def relative_to(self, parentpath: 'PathLike'):
+  def relative_to(self, parentpath: 'SafePurePosixPath_'):
     if parentpath.parts != self.parts[:len(parentpath.parts)]:
       raise RuntimeError('Not relative')
     else:
       return SafePurePosixPath_._from_parts(('./', *self.parts[len(parentpath.parts):]))
-  def __getattr__(self, attr):
-    return getattr(self._path, attr)
+  @property
+  def parts(self):
+    return self._path.parts
+  @property
+  def name(self):
+    return self._path.name
+  @property
+  def stem(self):
+    return self._path.stem
   def __str__(self) -> str:
     return str(self._path)
   def __repr__(self) -> str:
@@ -45,13 +52,13 @@ class SafePurePosixPath_:
     if root is None:
       import os
       if os.name == 'posix':
-        return self._path
+        return pathlib.Path(self._path)
       root = pathlib.Path('/').absolute()
     return root / self._path.relative_to('/')
 
-PathLike = t.Union[bytes, str, pathlib.PurePosixPath, SafePurePosixPath_]
+PathLike = t.Union[bytes, str, pathlib.Path, pathlib.PurePosixPath, SafePurePosixPath_]
 
-def SafePurePosixPath(path: PathLike = None) -> SafePurePosixPath_:
+def SafePurePosixPath(path: t.Optional[PathLike] = None) -> SafePurePosixPath_:
   ''' This ensures the path will always be /something
   It's not possible to go above the parent, // or /./ does nothing, etc..
   '''
@@ -61,6 +68,8 @@ def SafePurePosixPath(path: PathLike = None) -> SafePurePosixPath_:
     path = str(path)
   if isinstance(path, SafePurePosixPath_):
     return path
+  if isinstance(path, pathlib.Path):
+    path = path.as_posix()
   return SafePurePosixPath_() / path
 
 def pathparent(path: str):
@@ -95,7 +104,7 @@ def coerce_pathlike(func: t.Callable):
   })
   return wrapper
 
-def rmtree(P: pathlib.Path):
+def rmtree(P: pathlib.Path | t.Any):
   ''' This doesn't exist in normal pathlib but comes in handy
   '''
   Q = [(P, True)] + [(path, False) for path in P.iterdir()]

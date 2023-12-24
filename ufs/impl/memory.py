@@ -26,7 +26,7 @@ class Memory(UFS):
         'size': 0,
       })
     }
-    self._dirs: dict[SafePurePosixPath_, set[SafePurePosixPath_]] = {
+    self._dirs: dict[SafePurePosixPath_, set[str]] = {
       SafePurePosixPath(): set(),
     }
     self._cfd = iter(itertools.count(start=5))

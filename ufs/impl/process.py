@@ -7,7 +7,7 @@ from ufs.spec import UFS
 
 mp_spawn = mp.get_context('spawn')
 
-def ufs_proc(send: mp_spawn.Queue, recv: mp_spawn.Queue, ufs_spec):
+def ufs_proc(send: mp.Queue, recv: mp.Queue, ufs_spec):
   ufs = UFS.from_dict(**ufs_spec)
   while True:
     msg = recv.get()

@@ -1,5 +1,6 @@
 ''' Some custom IO Base generics since the core python ones are a bit odd
 '''
+import typing as t
 
 class Buffer:
   def __init__(self) -> None:
@@ -44,7 +45,7 @@ class RawBinaryIO:
     pass
   def close(self):
     raise NotImplementedError()
-  def truncate(self, length: int = None):
+  def truncate(self, length: t.Optional[int] = None):
     raise NotImplementedError()
   def tell(self) -> int:
     raise NotImplementedError()
@@ -106,7 +107,7 @@ class BufferedBinaryIO:
   def tell(self) -> int:
     return self.pos
 
-  def truncate(self, length: int = None):
+  def truncate(self, length: t.Optional[int] = None):
     self.raw.truncate(self.pos if length is None else length)
 
   def close(self):
@@ -129,7 +130,7 @@ class BufferedBinaryIO:
 
 class BufferedIO(BufferedBinaryIO):
   def __init__(self, raw: RawBinaryIO, chunk_size = 4096, newline = '\n', encoding = 'utf-8') -> None:
-    super().__init__(raw, chunk_size=chunk_size, newline=newline.encode(encoding) if type(newline) == str else newline)
+    super().__init__(raw, chunk_size=chunk_size, newline=newline.encode(encoding))
     self.encoding = encoding
   
   def read(self, amnt = -1) -> str:
@@ -138,7 +139,7 @@ class BufferedIO(BufferedBinaryIO):
   def write(self, data: str) -> int:
     return super().write(data.encode(self.encoding))
 
-  def readline(self) -> bytes:
+  def readline(self) -> str:
     return super().readline().decode(self.encoding)
 
 
@@ -154,7 +155,7 @@ class AsyncRawBinaryIO:
     pass
   async def tell(self) -> int:
     raise NotImplementedError()
-  async def truncate(self, length: int = None):
+  async def truncate(self, length: t.Optional[int] = None):
     raise NotImplementedError()
   async def close(self):
     raise NotImplementedError()
@@ -216,7 +217,7 @@ class AsyncBufferedBinaryIO:
   async def tell(self) -> int:
     return self.pos
 
-  async def truncate(self, length: int = None):
+  async def truncate(self, length: t.Optional[int] = None):
     await self.raw.truncate(self.pos if length is None else length)
 
   async def close(self):
@@ -239,14 +240,14 @@ class AsyncBufferedBinaryIO:
 
 class AsyncBufferedIO(AsyncBufferedBinaryIO):
   def __init__(self, raw: AsyncRawBinaryIO, chunk_size = 4096, newline = '\n', encoding = 'utf-8') -> None:
-    super().__init__(raw, chunk_size=chunk_size, newline=newline.encode(encoding) if type(newline) == str else newline)
+    super().__init__(raw, chunk_size=chunk_size, newline=newline.encode(encoding))
     self.encoding = encoding
   
   async def read(self, amnt = -1) -> str:
-    return await super().read(amnt).decode(self.encoding)
+    return (await super().read(amnt)).decode(self.encoding)
 
   async def write(self, data: str) -> int:
     return await super().write(data.encode(self.encoding))
 
-  async def readline(self) -> bytes:
-    return await super().readline().decode(self.encoding)
+  async def readline(self) -> str:
+    return (await super().readline()).decode(self.encoding)

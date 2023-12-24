@@ -5,6 +5,7 @@ import errno
 import logging
 import pathlib
 import contextlib
+import typing as t
 from ufs.spec import UFS
 from ufs.access.os import UOS
 from fuse import LoggingMixIn, Operations, FuseOSError
@@ -119,8 +120,8 @@ class FUSEOps(LoggingMixIn, Operations):
     result = self._os.write(fh, data)
     return result
 
-  getxattr = None
-  listxattr = None
+  getxattr: t.Any = None
+  listxattr: t.Any = None
 
 def fuse(ufs_spec: dict, mount_dir: str, readonly: bool):
   from fuse import FUSE
@@ -128,7 +129,7 @@ def fuse(ufs_spec: dict, mount_dir: str, readonly: bool):
     FUSE(FUSEOps(ufs, readonly=readonly), mount_dir, nothreads=True, foreground=True)
 
 @contextlib.contextmanager
-def fuse_mount(ufs: UFS, mount_dir: str = None, readonly: bool = False):
+def fuse_mount(ufs: UFS, mount_dir: t.Optional[str] = None, readonly: bool = False):
   import signal
   import functools
   import multiprocessing as mp
@@ -136,13 +137,13 @@ def fuse_mount(ufs: UFS, mount_dir: str = None, readonly: bool = False):
   from ufs.utils.polling import wait_for, safe_predicate
   from ufs.utils.tempfile import TemporaryMountDirectory
   mp_spawn = mp.get_context('spawn')
-  with TemporaryMountDirectory(mount_dir) as mount_dir:
+  with TemporaryMountDirectory(mount_dir) as mount_path:
     try:
-      with active_process(mp_spawn.Process(target=fuse, args=(ufs.to_dict(), str(mount_dir), readonly)), terminate_signal=signal.SIGINT):
-        wait_for(functools.partial(safe_predicate, mount_dir.is_mount))
-        yield mount_dir
+      with active_process(mp_spawn.Process(target=fuse, args=(ufs.to_dict(), str(mount_path), readonly)), terminate_signal=signal.SIGINT):
+        wait_for(functools.partial(safe_predicate, mount_path.is_mount))
+        yield mount_path
     finally:
-      wait_for(functools.partial(safe_predicate, lambda: not mount_dir.is_mount()))
+      wait_for(functools.partial(safe_predicate, lambda: not mount_path.is_mount()))
 
 
 if __name__ == '__main__':
@@ -150,5 +151,5 @@ if __name__ == '__main__':
   ufs = UFS.from_dict(**json.loads(os.environ.pop('UFS_SPEC')))
   mount_dir = pathlib.Path(sys.argv[1])
   assert mount_dir.exists()
-  with fuse_mount(ufs, mount_dir, bool(os.environ.pop('UFS_READONLY', ''))):
+  with fuse_mount(ufs, str(mount_dir), bool(os.environ.pop('UFS_READONLY', ''))):
     threading.Event().wait()

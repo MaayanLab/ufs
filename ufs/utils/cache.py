@@ -54,8 +54,10 @@ class TTLCache(t.Generic[T]):
       self._store[key] = item
     if item.err is not None:
       raise item.err
-    else:
+    elif item.val is not None:
       return item.val
+    else:
+      raise RuntimeError()
 
   def __setitem__(self, key: str, val: T):
     self._store[key] = Result(val=val)

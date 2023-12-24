@@ -1,5 +1,6 @@
 ''' Implement a pathlib.Path-like interface to UFS
 '''
+import typing as t
 from ufs.spec import UFS, AsyncUFS
 from ufs.utils.pathlib import SafePurePosixPath, PathLike
 from ufs.utils.io import RawBinaryIO, BufferedBinaryIO, BufferedIO, AsyncRawBinaryIO, AsyncBufferedBinaryIO, AsyncBufferedIO
@@ -57,8 +58,12 @@ class UPath:
     except FileNotFoundError:
       return False
 
-  def open(self, mode: str, encoding='utf-8', newline=b'\n'):
+  def open(self, mode: str, encoding='utf-8', newline: t.Union[str, bytes, None] = None):
     if 'b' in mode:
+      if newline is None:
+        newline = b'\n'
+      elif type(newline) != bytes:
+        raise RuntimeError('newline must be bytes in byte mode')
       return BufferedBinaryIO(
         UPathBinaryIO(self._ufs, self._ufs.open(self._path, mode)),
         chunk_size=self._ufs.CHUNK_SIZE,
@@ -67,6 +72,10 @@ class UPath:
     else:
       if mode.endswith('+'): mode_ = mode[:-1] + 'b+'
       else: mode_ = mode + 'b'
+      if newline is None:
+        newline = '\n'
+      elif type(newline) != str:
+        raise RuntimeError('newline must be str in str mode')
       return BufferedIO(
         UPathBinaryIO(self._ufs, self._ufs.open(self._path, mode_)),
         chunk_size=self._ufs.CHUNK_SIZE,
@@ -191,18 +200,22 @@ class AsyncUPath:
 
   async def is_file(self):
     try:
-      return (await self._ufs.info(self._path)['type']) == 'file'
+      return (await self._ufs.info(self._path))['type'] == 'file'
     except FileNotFoundError:
       return False
 
   async def is_dir(self):
     try:
-      return (await self._ufs.info(self._path)['type']) == 'directory'
+      return (await self._ufs.info(self._path))['type'] == 'directory'
     except FileNotFoundError:
       return False
 
-  async def open(self, mode: str, encoding='utf-8', newline=b'\n'):
+  async def open(self, mode: str, encoding='utf-8', newline: t.Optional[t.Union[bytes, str]] = None):
     if 'b' in mode:
+      if newline is None:
+        newline = b'\n'
+      elif type(newline) != bytes:
+        raise RuntimeError('newline must be bytes in bytes mode')
       return AsyncBufferedBinaryIO(
         AsyncUPathBinaryIO(self._ufs, await self._ufs.open(self._path, mode)),
         chunk_size=self._ufs.CHUNK_SIZE,
@@ -211,6 +224,10 @@ class AsyncUPath:
     else:
       if mode.endswith('+'): mode_ = mode[:-1] + 'b+'
       else: mode_ = mode + 'b'
+      if newline is None:
+        newline = '\n'
+      elif type(newline) != str:
+        raise RuntimeError('newline must be str in str mode')
       return AsyncBufferedIO(
         AsyncUPathBinaryIO(self._ufs, await self._ufs.open(self._path, mode_)),
         chunk_size=self._ufs.CHUNK_SIZE,

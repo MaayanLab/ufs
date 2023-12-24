@@ -9,8 +9,14 @@ from ufs.access.pathlib import UPath
 from ufs.utils.pathlib import rmtree
 
 class UMap(MutableMapping):
-  def __init__(self, ufs: UFS = None, upath: UPath = None):
-    self._upath = UPath(ufs) if upath is None else upath
+  def __init__(self, ufs: t.Optional[UFS] = None, upath: t.Optional[UPath] = None):
+    if upath is None:
+      if ufs is None:
+        raise RuntimeError('ufs or upath is required')
+      else:
+        self._upath = UPath(ufs)
+    else:
+      self._upath = upath
 
   def __repr__(self):
     return f'''UMap({repr(self._upath)}, {repr({

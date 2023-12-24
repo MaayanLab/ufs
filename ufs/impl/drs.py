@@ -98,6 +98,9 @@ class DRS(DescriptorFromAtomicMixin, UFS):
           access_url['url'] += f"#?headers={quote(json.dumps(dict(self._headers, **access_url['headers'])))}"
         elif self._headers:
           access_url['url'] += f"#?headers={quote(json.dumps(self._headers))}"
+      else:
+        # ignore invalid spec
+        continue
       # simply attempt to fetch from the access_url using ufs_from_url
       #  this supports various providers include http, ftp, and s3
       from ufs.access.url import ufs_from_url

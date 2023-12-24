@@ -1,15 +1,16 @@
 import pathlib
 import tempfile
 import contextlib
+import typing as t
 
 @contextlib.contextmanager
-def TemporaryMountDirectory(mount_dir: str = None):
+def TemporaryMountDirectory(mount_dir: t.Optional[str] = None):
   if mount_dir is None:
     mount_dir_resolved = pathlib.Path(tempfile.mkdtemp())
   else:
     mount_dir_resolved = pathlib.Path(mount_dir)
     if mount_dir_resolved.exists():
-      mount_dir = mount_dir_resolved
+      mount_dir = str(mount_dir_resolved)
     else:
       mount_dir_resolved.mkdir(parents=True)
   try:

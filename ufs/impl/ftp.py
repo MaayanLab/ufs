@@ -16,6 +16,7 @@ def ftp_client_thread(send: queue.Queue, recv: queue.Queue, opts: dict):
     if op == None:
       recv.task_done()
       break
+    stream = None
     try:
       func = getattr(ftp, op)
       if op in {'retrlines', 'retrbinary'}:
@@ -31,7 +32,9 @@ def ftp_client_thread(send: queue.Queue, recv: queue.Queue, opts: dict):
     else:
       send.put([i, res, None])
     finally:
-      if op in {'retrlines', 'retrbinary'}: stream.close()
+      if op in {'retrlines', 'retrbinary'}:
+        if stream is not None:
+          stream.close()
     recv.task_done()
   ftp.quit()
 

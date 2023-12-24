@@ -4,6 +4,7 @@
 '''
 import pathlib
 import contextlib
+import typing as t
 from collections import OrderedDict
 from ufs.spec import UFS
 from ufs.impl.local import Local
@@ -12,17 +13,16 @@ from ufs.utils.pathlib import SafePurePosixPath
 from ufs.access.shutil import walk, copytree, rmtree
 
 @contextlib.contextmanager
-def ffuse_mount(ufs: UFS, mount_dir: str = None, readonly: bool = False):
+def ffuse_mount(ufs: UFS, mount_dir: t.Optional[str] = None, readonly: bool = False):
   from ufs.utils.tempfile import TemporaryMountDirectory
-  with TemporaryMountDirectory(mount_dir) as mount_dir:
-    assert not any(True for _ in mount_dir.iterdir()), "mount_dir should be empty"
-    mount_dir_ufs = Prefix(Local(), mount_dir)
+  with TemporaryMountDirectory(mount_dir) as mount_path:
+    assert not any(True for _ in mount_path.iterdir()), "mount_dir should be empty"
+    mount_dir_ufs = Prefix(Local(), mount_path)
     root = SafePurePosixPath()
     copytree(ufs, root, mount_dir_ufs, root, exists_ok=True)
-    if not readonly:
-      before = OrderedDict(walk(mount_dir_ufs, root, dirfirst=False))
+    before = OrderedDict(walk(mount_dir_ufs, root, dirfirst=False)) if not readonly else OrderedDict()
     try:
-      yield mount_dir
+      yield mount_path
     finally:
       if not readonly:
         after = dict(walk(mount_dir_ufs, root, dirfirst=False))
@@ -40,5 +40,5 @@ if __name__ == '__main__':
   ufs = UFS.from_dict(**json.loads(os.environ.pop('UFS_SPEC')))
   mount_dir = pathlib.Path(sys.argv[1])
   assert mount_dir.exists()
-  with ffuse_mount(ufs, mount_dir, bool(os.environ.pop('UFS_READONLY', ''))):
+  with ffuse_mount(ufs, str(mount_dir), bool(os.environ.pop('UFS_READONLY', ''))):
     threading.Event().wait()

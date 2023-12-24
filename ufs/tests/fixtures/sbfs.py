@@ -18,7 +18,7 @@ def ufs():
       ),
       Memory()
     ) as ufs:
-      ufs.mkdir('/')
+      ufs.mkdir(SafePurePosixPath('/'))
       try:
         yield ufs
       finally:

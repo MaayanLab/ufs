@@ -20,6 +20,7 @@ def ufs():
   from ufs.utils.polling import wait_for, safe_predicate
   from ufs.utils.process import active_process
   from ufs.access.shutil import rmtree
+  from ufs.utils.pathlib import SafePurePosixPath
   # generate credentials for minio
   MINIO_ROOT_USER, MINIO_ROOT_PASSWORD = str(uuid.uuid4()), str(uuid.uuid4())
   # find a free port to run minio
@@ -50,7 +51,7 @@ def ufs():
       ), Memory()),
       '/test',
     ) as ufs:
-      ufs.mkdir('/')
+      ufs.mkdir(SafePurePosixPath('/'))
       try:
         yield ufs
       finally:

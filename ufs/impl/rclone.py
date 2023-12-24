@@ -21,16 +21,17 @@ def rclone_uri_from_path(path):
     return fs+':', None
   return fs+':', SafePurePosixPath('/'.join(parts))
 
-def rstrip_iter(it, rstrip):
+def rstrip_iter(it: t.Iterator[bytes], rstrip: bytes):
   last = None
   for el in it:
     if last is not None:
       yield last
     last = el
-  yield last.rstrip(rstrip)
+  if last is not None:
+    yield last.rstrip(rstrip)
 
 @contextlib.contextmanager
-def serve_rclone_rcd(env: dict = {}):
+def serve_rclone_rcd(env: t.Dict[str, str] = {}):
   ''' RClone operates through an `rclone rcd` server, this helper
   can be used to ensure one is running for the duration of the context manager.
   '''
@@ -42,7 +43,6 @@ def serve_rclone_rcd(env: dict = {}):
   from ufs.utils.polling import wait_for, safe_predicate
   rclone = shutil.which('rclone')
   docker = shutil.which('docker')
-  assert rclone or docker, 'Failed find binary for running rclone'
   with socket.socket() as s:
     s.bind(('127.0.0.1', 0))
     rclone_host, rclone_port = s.getsockname()
@@ -54,7 +54,7 @@ def serve_rclone_rcd(env: dict = {}):
       '--rc-user', rclone_user,
       '--rc-pass', rclone_pass,
     ], env=env, stdout=sys.stdout, stderr=sys.stderr)
-  else:
+  elif docker:
     proc = Popen([
       docker, 'run',
       *[arg for key in env for arg in ['-e', key]],
@@ -63,17 +63,26 @@ def serve_rclone_rcd(env: dict = {}):
       '--rc-addr', f"0.0.0.0:8080",
       '--rc-user', rclone_user,
       '--rc-pass', rclone_pass,
-    ], stdout=sys.stdout, stderr=sys.stderr)
+    ])
+  else:
+    raise RuntimeError('Failed find binary for running rclone')
+  #
   with active_process(proc):
-    rclone_config = dict(url=f"http://{rclone_host}:{rclone_port}", auth=(rclone_user, rclone_pass))
-    wait_for(functools.partial(safe_predicate, lambda: requests.post(f"{rclone_config['url']}/config/listremotes", auth=rclone_config['auth']).status_code == 200))
+    rclone_config = dict(url=f"http://{rclone_host}:{rclone_port}", auth=f"{rclone_user}:{rclone_pass}")
+    wait_for(functools.partial(safe_predicate, lambda: requests.post(f"{rclone_config['url']}/config/listremotes", auth=(rclone_user, rclone_pass)).status_code == 200))
     yield rclone_config
 
 class RClone(DescriptorFromAtomicMixin, UFS):
-  def __init__(self, url: str, auth: t.Tuple[str, str]):
+  def __init__(self, url: str, auth: str | t.Tuple[str, str]):
     super().__init__()
     self._url = url
-    self._auth = auth
+    if type(auth) == str:
+      u, _, p = auth.partition(':')
+      self._auth = (u, p)
+    elif type(auth) == tuple:
+      self._auth = auth
+    else:
+      raise NotImplementedError(auth)
 
   @staticmethod
   def from_dict(*, url, auth):
