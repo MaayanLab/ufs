@@ -104,8 +104,9 @@ def flask_ufs_for_drs(ufs: UFS, index: t.Mapping[str, t.Any], *, app: t.Union[fl
       data.update({
         # "mime_type": drs_object.mime_type,
         "access_methods": [
-          {'type': 'https', 'access_id': 'https'},
-          {'type': 'https', 'access_url': f"{public_url}/ga4gh/drs/v1/objects/{object_id}/data"},
+          {'type': 'https', 'access_id': 'primary'},
+          # Annoyingly we can't provide this because CAVATICA uses a broken client..
+          # {'type': 'https', 'access_url': f"{public_url}/ga4gh/drs/v1/objects/{object_id}/data"},
         ],
       })
     elif drs_object['info']['type'] == 'directory':
