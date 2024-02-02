@@ -155,8 +155,13 @@ def create_app():
   @atexit.register
   def cleanup():
     ufs.stop()
+  index = index_ufs_for_drs(ufs)
+  if os.environ.get('UFS_INDEX_OUTFILE'):
+    from pathlib import Path
+    with Path(os.environ['UFS_INDEX_OUTFILE']).open('w') as fw:
+      json.dump(index, fw)
   return flask_ufs_for_drs(
-    ufs, index_ufs_for_drs(ufs),
+    ufs, index,
     app=flask.Flask(__name__),
     public_url=os.environ.pop('UFS_PUBLIC_URL'),
   )
