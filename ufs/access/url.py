@@ -14,8 +14,12 @@ def register_proto_handler(proto):
 @register_proto_handler(None)
 @register_proto_handler('file')
 def proto_file(url):
+  from pathlib import Path
   from ufs.impl.local import Local
   from ufs.impl.prefix import Prefix
+  if not url['path'].startswith('/'):
+    # resolve relative file paths
+    url['path'] = str(Path.cwd() / url['path'])
   return Prefix(Local(), url['path'])
 
 @register_proto_handler('memory')
