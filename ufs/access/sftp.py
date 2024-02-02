@@ -242,4 +242,6 @@ def serve_ufs_via_sftp(ufs: UFS, host: str, port: int, username: str, password: 
 if __name__ == '__main__':
   import sys, json
   kwargs = json.loads(sys.argv[1])
+  if 'ufs' not in kwargs:
+    kwargs['ufs'] = json.loads(os.environ.pop('UFS_SPEC'))
   ufs_via_sftp(**kwargs)
