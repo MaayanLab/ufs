@@ -163,3 +163,8 @@ def open_from_url(url: str, mode='r', protos=protos):
   with upath_from_url(url, protos=protos) as upath:
     with upath.open(mode) as fh:
       yield fh
+
+if __name__ == '__main__':
+  import sys
+  import json
+  json.dump(ufs_from_url(sys.argv[1]).to_dict(), sys.stdout)
