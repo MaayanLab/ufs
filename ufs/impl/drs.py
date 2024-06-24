@@ -81,7 +81,7 @@ class DRS(DescriptorFromAtomicMixin, UFS):
     for access_method in info.get('access_methods', []):
       # obtain access url
       if access_method.get('access_url'):
-        access_url = dict(url=access_method['access_url'])
+        access_url = access_method['access_url']
       elif access_method.get('access_id'):
         _, host, opaque_id = flat_path.parts
         req = requests.get(self._scheme + '://' + host + '/ga4gh/drs/v1/objects/' + opaque_id + '/access/' + access_method['access_id'], headers=self._headers)
@@ -92,12 +92,13 @@ class DRS(DescriptorFromAtomicMixin, UFS):
         elif req.status_code > 299:
           raise RuntimeError(req.status_code)
         access_url = req.json()
-        import json
-        from urllib.parse import quote
-        if access_url.get('headers'):
-          access_url['url'] += f"#?headers={quote(json.dumps(dict(self._headers, **access_url['headers'])))}"
-        elif self._headers:
-          access_url['url'] += f"#?headers={quote(json.dumps(self._headers))}"
+      assert type(access_url) == dict and access_url.get('url'), 'DRS Access URL should be a dictionary'
+      import json
+      from urllib.parse import quote
+      if access_url.get('headers'):
+        access_url['url'] += f"#?headers={quote(json.dumps(dict(self._headers, **access_url['headers'])))}"
+      elif self._headers:
+        access_url['url'] += f"#?headers={quote(json.dumps(self._headers))}"
       # simply attempt to fetch from the access_url using ufs_from_url
       #  this supports various providers include http, ftp, and s3
       from ufs.access.url import ufs_from_url
