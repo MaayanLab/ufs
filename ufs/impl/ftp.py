@@ -69,13 +69,14 @@ class FTP(DescriptorFromAtomicMixin, UFS):
     self._taskid = iter(itertools.count())
 
   @staticmethod
-  def from_dict(*, host, user, passwd, port, tls):
+  def from_dict(*, host, user, passwd, port, tls, starttls):
     return FTP(
       host=host,
       user=user,
       passwd=passwd,
       port=port,
       tls=tls,
+      starttls=starttls,
     )
 
   def to_dict(self):
