@@ -6,10 +6,32 @@ import threading as t
 from ufs.spec import DescriptorFromAtomicMixin, UFS, QueuedIterator, ReadableIterator
 from ufs.utils.one import one
 
+# unlike ftplib.FTP_TLS, this version connects over SSL first and then runs FTP over it
+#  ftplib.FTP_TLS is more like email's STARTTLS in that it first connects, then upgrades to ssl
+class ftplib_FTPS(ftplib.FTP):
+  def __init__(self):
+    super().__init__()
+  
+  def connect(self, hostname, port=990):
+    import ssl, socket
+    context = ssl.create_default_context()
+    sock = socket.create_connection((hostname, port))
+    self.sock = context.wrap_socket(sock, server_hostname=hostname)
+    self.af = self.sock.family
+    self.file = self.sock.makefile('r')
+    self.welcome = self.getresp()
+    return self.welcome
+
 def ftp_client_thread(send: queue.Queue, recv: queue.Queue, opts: dict):
-  ftp = ftplib.FTP_TLS() if opts['tls'] else ftplib.FTP()
+  if opts['starttls']:
+    ftp = ftplib.FTP_TLS()
+  elif opts['tls']:
+    ftp = ftplib_FTPS()
+  else:
+    ftp = ftplib.FTP()
   ftp.connect(opts['host'], opts['port'])
   ftp.login(opts['user'], opts['passwd'])
+  if isinstance(ftp, ftplib.FTP_TLS): ftp.prot_p()
   while True:
     msg = recv.get()
     i, op, args, kwargs = msg
@@ -36,13 +58,14 @@ def ftp_client_thread(send: queue.Queue, recv: queue.Queue, opts: dict):
   ftp.quit()
 
 class FTP(DescriptorFromAtomicMixin, UFS):
-  def __init__(self, host: str, user = '', passwd = '', port = 21, tls = False) -> None:
+  def __init__(self, host: str, user = '', passwd = '', port = 21, tls = False, starttls = None) -> None:
     super().__init__()
     self._host = host
     self._user = user
     self._passwd = passwd
     self._port = port
     self._tls = tls
+    self._starttls = True if port == 21 and tls and starttls is None else bool(starttls)
     self._taskid = iter(itertools.count())
 
   @staticmethod
@@ -62,6 +85,7 @@ class FTP(DescriptorFromAtomicMixin, UFS):
       passwd=self._passwd,
       port=self._port,
       tls=self._tls,
+      starttls=self._starttls,
     )
 
   @contextlib.contextmanager
