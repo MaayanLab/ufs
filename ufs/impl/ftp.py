@@ -150,7 +150,9 @@ class FTP(DescriptorFromAtomicMixin, UFS):
       del self._ftp_client_thread
 
   def ls(self, path):
-    return self._forward('nlst', str(path))
+    nlst = self._forward('nlst', str(path))
+    # it seems nlst returns the entire path not just the relative path
+    return [f[len(str(path)):] for f in nlst]
 
   def info(self, path):
     if str(path) == '/': return { 'type': 'directory', 'size': 0 }
