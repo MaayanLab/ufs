@@ -29,16 +29,17 @@ class SimpleCacheFileSystemEx(SimpleCacheFileSystem):
             else:
                 return LocalTempFile(self, path, fn=fn, mode=mode)
 
-        sha = self.hash_name(path, self.same_names)
+        sha = self._mapper(path)
         fn = os.path.join(self.storage[-1], sha)
         logger.debug("Copying %s to local cache" % path)
         kwargs["mode"] = mode
 
         self._mkcache()
+        self._cache_size = None
         if self.compression:
             with self.fs._open(path, **kwargs) as f:
                 with open(fn, "wb") as f2:
-                    if isinstance(f, AbstractBufferedFile):
+                    if isinstance(f, AbstractBufferedFile) and isinstance(f.cache, BaseCache):
                         # want no type of caching if just downloading whole thing
                         f.cache = BaseCache(0, f.cache.fetcher, f.size)
                     comp = (
@@ -53,7 +54,7 @@ class SimpleCacheFileSystemEx(SimpleCacheFileSystem):
                         data = f.read(block)
                         f2.write(data)
         else:
-            self.fs.get(path, fn)
+            self.fs.get_file(path, fn)
         return self._open(path, mode)
 
 
