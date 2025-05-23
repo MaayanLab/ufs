@@ -150,9 +150,16 @@ class FTP(DescriptorFromAtomicMixin, UFS):
       del self._ftp_client_thread
 
   def ls(self, path):
-    nlst = self._forward('nlst', str(path))
-    # it seems nlst returns the entire path not just the relative path
-    return [f[len(str(path)):] for f in nlst]
+    path_str = str(path)
+    nlst = self._forward('nlst', path_str)
+    # it seems nlst sometimes returns the entire path not just the relative path
+    files = []
+    for f in nlst:
+      if f.startswith(path_str):
+        files.append(f[len(path_str):])
+      else:
+        files.append(f)
+    return files
 
   def info(self, path):
     if str(path) == '/': return { 'type': 'directory', 'size': 0 }
@@ -192,8 +199,8 @@ class FTP(DescriptorFromAtomicMixin, UFS):
         for chunk in data:
           stream.put(chunk)
         stream.put(None)
-    except ftplib.error_perm:
-      raise PermissionError(str(path))
+    except ftplib.error_perm as e:
+      raise PermissionError(str(path)) from e
 
   def unlink(self, path):
     self._forward('delete', str(path))
