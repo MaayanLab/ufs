@@ -131,7 +131,7 @@ class S3FileSystemEx(S3FileSystem):
             except FileNotFoundError:
                 pass
             except ClientError as e:
-                raise translate_boto_error(e, set_cause=False)
+                raise translate_boto_error(e, set_cause=False) from e
         else:
             for info in await self._lsbuckets():
                 if info['name'] == bucket:
@@ -168,9 +168,9 @@ class S3FileSystemEx(S3FileSystem):
 
             raise FileNotFoundError(path)
         except ClientError as e:
-            raise translate_boto_error(e, set_cause=False)
+            raise translate_boto_error(e, set_cause=False) from e
         except ParamValidationError as e:
-            raise ValueError("Failed to list path %r: %s" % (path, e))
+            raise ValueError("Failed to list path %r: %s" % (path, e)) from e
 
     info = sync_wrapper(_info)
 
@@ -212,9 +212,9 @@ class S3FileSystemEx(S3FileSystem):
                 self.invalidate_cache("")
                 self.invalidate_cache(bucket)
             except ClientError as e:
-                raise translate_boto_error(e)
+                raise translate_boto_error(e) from e
             except ParamValidationError as e:
-                raise ValueError("Bucket create failed %r: %s" % (bucket, e))
+                raise ValueError("Bucket create failed %r: %s" % (bucket, e)) from e
         else:
             # raises if bucket doesn't exist and doesn't get create flag.
             await self._ls(bucket)
