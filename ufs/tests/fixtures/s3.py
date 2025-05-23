@@ -15,8 +15,11 @@ def ufs():
   from subprocess import Popen
   from ufs.impl.s3 import S3
   from ufs.impl.prefix import Prefix
+  from ufs.impl.memory import Memory
+  from ufs.impl.writecache import Writecache
   from ufs.utils.polling import wait_for, safe_predicate
   from ufs.utils.process import active_process
+  from ufs.utils.pathlib import SafePurePosixPath
   from ufs.access.shutil import rmtree
   # generate credentials for minio
   MINIO_ROOT_USER, MINIO_ROOT_PASSWORD = str(uuid.uuid4()), str(uuid.uuid4())
@@ -40,15 +43,15 @@ def ufs():
     # wait for minio to be running & ready
     wait_for(functools.partial(safe_predicate, lambda: urlopen(Request(f"http://localhost:{port}/minio/health/live", method='HEAD')).status == 200))
     # create an fsspec connection to the minio server
-    with Prefix(
+    with Writecache(Prefix(
       S3(
         access_key=MINIO_ROOT_USER,
         secret_access_key=MINIO_ROOT_PASSWORD,
         endpoint_url=f"http://localhost:{port}",
       ),
-      '/test',
-    ) as ufs:
-      ufs.mkdir('/')
+      '/storage',
+    ), Memory()) as ufs:
+      ufs.mkdir(SafePurePosixPath('/'))
       try:
         yield ufs
       finally:
