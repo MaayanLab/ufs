@@ -5,11 +5,20 @@ import errno
 import logging
 import pathlib
 import contextlib
+import typing as t
 from ufs.spec import UFS
 from ufs.access.os import UOS
 from fuse import LoggingMixIn, Operations, FuseOSError
 
 logger = logging.getLogger(__name__)
+
+import contextlib
+@contextlib.contextmanager
+def fuseerror():
+  try: yield
+  except FuseOSError as e: raise e
+  except OSError as e: raise FuseOSError(e.errno) from e
+  except Exception as e: raise FuseOSError(errno.ENOTSUP) from e
 
 class FUSEOps(LoggingMixIn, Operations):
   def __init__(self, ufs: UFS, readonly = False) -> None:
@@ -19,83 +28,103 @@ class FUSEOps(LoggingMixIn, Operations):
     self._readonly = readonly
 
   def access(self, path, amode):
-    if self._readonly and amode & os.W_OK:
-      raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
-    if not self._os.access(path, amode):
-      raise FuseOSError(errno.EACCES)
+    with fuseerror():
+      if self._readonly and amode & os.W_OK:
+        raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
+      if not self._os.access(path, amode):
+        raise FuseOSError(errno.EACCES)
+    return 0
 
   def chmod(self, path, *args, **kwargs):
-    if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
-    return self._os.chmod(path, *args, **kwargs)
+    with fuseerror():
+      if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
+      return self._os.chmod(path, *args, **kwargs)
 
   def chown(self, path, *args, **kwargs):
-    if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
-    return self._os.chown(path, *args, **kwargs)
+    with fuseerror():
+      if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
+      return self._os.chown(path, *args, **kwargs)
 
   def create(self, path, mode):
-    if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
-    return self._os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, mode)
+    with fuseerror():
+      if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
+      return self._os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, mode)
 
   def flush(self, path, fh):
-    return self._os.fsync(fh)
-
-  def fsync(self, path, datasync, fh):
-    if datasync != 0:
-      return self._os.fdatasync(fh)
-    else:
+    with fuseerror():
       return self._os.fsync(fh)
 
+  def fsync(self, path, datasync, fh):
+    with fuseerror():
+      if datasync != 0:
+        return self._os.fdatasync(fh)
+      else:
+        return self._os.fsync(fh)
+
   def getattr(self, path, fh=None):
-    st = self._os.stat(path)
-    return dict((key, getattr(st, key)) for key in (
-      'st_atime', 'st_ctime', 'st_gid', 'st_mode', 'st_mtime',
-      'st_nlink', 'st_size', 'st_uid'))
+    with fuseerror():
+      st = self._os.stat(path)
+      return dict((key, getattr(st, key)) for key in (
+        'st_atime', 'st_ctime', 'st_gid', 'st_mode', 'st_mtime',
+        'st_nlink', 'st_size', 'st_uid'))
 
   def link(self, target, source):
-    if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), source)
-    self._os.link(target, source)
+    with fuseerror():
+      if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), source)
+      self._os.link(target, source)
 
   def mkdir(self, path, *args, **kwargs):
-    if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
-    return self._os.mkdir(path, *args, **kwargs)
+    with fuseerror():
+      if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
+      return self._os.mkdir(path, *args, **kwargs)
 
   def mknod(self, path, *args, **kwargs):
-    if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
-    return self._os.mknod(path, *args, **kwargs)
+    with fuseerror():
+      if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
+      return self._os.mknod(path, *args, **kwargs)
 
   def open(self, path, *args, **kwargs):
-    return self._os.open(path, *args, **kwargs)
+    with fuseerror():
+      return self._os.open(path, *args, **kwargs)
 
   def readlink(self, path, *args, **kwargs):
-    return self._os.readlink(path, *args, **kwargs)
+    with fuseerror():
+      return self._os.readlink(path, *args, **kwargs)
 
   def rmdir(self, path, *args, **kwargs):
-    if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
-    return self._os.rmdir(path, *args, **kwargs)
+    with fuseerror():
+      if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
+      return self._os.rmdir(path, *args, **kwargs)
 
   def unlink(self, path, *args, **kwargs):
-    if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
-    return self._os.unlink(path, *args, **kwargs)
+    with fuseerror():
+      if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
+      return self._os.unlink(path, *args, **kwargs)
 
   def utimens(self, path, *args, **kwargs):
-    if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
-    return self._os.utime(path, *args, **kwargs)
+    with fuseerror():
+      if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
+      return self._os.utime(path, *args, **kwargs)
 
   def read(self, path, size, offset, fh):
-    # with self._lock:
-    self._os.lseek(fh, offset, 0)
-    result = self._os.read(fh, size)
-    return result
+    with fuseerror():
+      # with self._lock:
+      self._os.lseek(fh, offset, 0)
+      result = self._os.read(fh, size)
+      return result
 
   def readdir(self, path, fh):
-    return ['.', '..'] + self._os.listdir(path)
+    with fuseerror():
+      return ['.', '..'] + self._os.listdir(path)
 
   def release(self, path, fh):
-    return self._os.close(fh)
+    with fuseerror():
+      return self._os.close(fh)
 
   def rename(self, old, new):
-    if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), new)
-    return self._os.rename(old, new)
+    with fuseerror():
+      if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), new)
+      return self._os.rename(old, new)
 
   def statfs(self, path):
     return dict(f_bsize=512, f_blocks=4096, f_bavail=2048)
@@ -107,20 +136,23 @@ class FUSEOps(LoggingMixIn, Operations):
   #       'f_ffree', 'f_files', 'f_flag', 'f_frsize', 'f_namemax'))
 
   def symlink(self, target, source):
-    return self._os.symlink(source, target)
+    with fuseerror():
+      return self._os.symlink(source, target)
 
   def truncate(self, path, length, fh=None):
-    if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
-    self._os.truncate(path, length)
+    with fuseerror():
+      if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
+      self._os.truncate(path, length)
 
   def write(self, path, data, offset, fh):
-    # with self._lock:
-    self._os.lseek(fh, offset, 0)
-    result = self._os.write(fh, data)
-    return result
+    with fuseerror():
+      # with self._lock:
+      self._os.lseek(fh, offset, 0)
+      result = self._os.write(fh, data)
+      return result
 
-  getxattr = None
-  listxattr = None
+  # getxattr = None
+  # listxattr = None
 
 def fuse(ufs_spec: dict, mount_dir: str, readonly: bool):
   from fuse import FUSE
@@ -128,7 +160,7 @@ def fuse(ufs_spec: dict, mount_dir: str, readonly: bool):
     FUSE(FUSEOps(ufs, readonly=readonly), mount_dir, nothreads=True, foreground=True)
 
 @contextlib.contextmanager
-def fuse_mount(ufs: UFS, mount_dir: str = None, readonly: bool = False):
+def fuse_mount(ufs: UFS, mount_dir: t.Optional[t.Union[str, pathlib.Path]] = None, readonly: bool = False):
   import signal
   import functools
   import multiprocessing as mp
@@ -136,13 +168,13 @@ def fuse_mount(ufs: UFS, mount_dir: str = None, readonly: bool = False):
   from ufs.utils.polling import wait_for, safe_predicate
   from ufs.utils.tempfile import TemporaryMountDirectory
   mp_spawn = mp.get_context('spawn')
-  with TemporaryMountDirectory(mount_dir) as mount_dir:
+  with TemporaryMountDirectory(mount_dir) as mount_dir_resolved:
     try:
-      with active_process(mp_spawn.Process(target=fuse, args=(ufs.to_dict(), str(mount_dir), readonly)), terminate_signal=signal.SIGINT):
-        wait_for(functools.partial(safe_predicate, mount_dir.is_mount))
-        yield mount_dir
+      with active_process(mp_spawn.Process(target=fuse, args=(ufs.to_dict(), str(mount_dir_resolved), readonly)), terminate_signal=signal.SIGINT):
+        wait_for(functools.partial(safe_predicate, mount_dir_resolved.is_mount))
+        yield mount_dir_resolved
     finally:
-      wait_for(functools.partial(safe_predicate, lambda: not mount_dir.is_mount()))
+      wait_for(functools.partial(safe_predicate, lambda: not mount_dir_resolved.is_mount()))
 
 
 if __name__ == '__main__':

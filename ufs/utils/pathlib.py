@@ -1,3 +1,4 @@
+import os
 import pathlib
 import typing as t
 
@@ -31,6 +32,7 @@ class SafePurePosixPath_:
       else: p = p / part
     return SafePurePosixPath_(p)
   def relative_to(self, parentpath: 'PathLike'):
+    parentpath = pathlib.PurePosixPath(str(parentpath))
     if parentpath.parts != self.parts[:len(parentpath.parts)]:
       raise RuntimeError('Not relative')
     else:
@@ -45,13 +47,13 @@ class SafePurePosixPath_:
     if root is None:
       import os
       if os.name == 'posix':
-        return self._path
+        return pathlib.Path(self._path)
       root = pathlib.Path('/').absolute()
     return root / self._path.relative_to('/')
 
-PathLike = t.Union[bytes, str, pathlib.PurePosixPath, SafePurePosixPath_]
+PathLike = t.Union[bytes, str, os.PathLike, pathlib.PurePosixPath, SafePurePosixPath_]
 
-def SafePurePosixPath(path: PathLike = None) -> SafePurePosixPath_:
+def SafePurePosixPath(path: t.Optional[PathLike] = None) -> SafePurePosixPath_:
   ''' This ensures the path will always be /something
   It's not possible to go above the parent, // or /./ does nothing, etc..
   '''

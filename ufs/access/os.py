@@ -6,7 +6,6 @@ import time
 import errno
 import typing as t
 import logging
-import traceback
 import contextlib
 from ufs.spec import UFS
 from ufs.utils.pathlib import SafePurePosixPath, pathparent
@@ -20,18 +19,17 @@ FileDescriptorOrPath = t.Union[int, StrOrBytesPath]
 ReadableBuffer = bytes
 
 @contextlib.contextmanager
-def oserror(path: str = None):
+def oserror(path: t.Optional[FileDescriptorOrPath] = None):
   try:
     yield
-  except FileNotFoundError: raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
-  except FileExistsError: raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), path)
-  except NotADirectoryError: raise NotADirectoryError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), path)
-  except IsADirectoryError: raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), path)
-  except PermissionError: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
-  except NotImplementedError: raise OSError(errno.ENOTSUP, os.strerror(errno.ENOTSUP), path)
-  except:
-    logger.error(traceback.format_exc())
-    raise OSError(errno.ENOTSUP, os.strerror(errno.ENOTSUP), path)
+  except FileNotFoundError as e: raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path) from e
+  except FileExistsError as e: raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), path) from e
+  except NotADirectoryError as e: raise NotADirectoryError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), path) from e
+  except IsADirectoryError as e: raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), path) from e
+  except PermissionError as e: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path) from e
+  except OSError as e: raise e
+  except NotImplementedError as e: raise OSError(errno.ENOTSUP, os.strerror(errno.ENOTSUP), path) from e
+  except Exception as e: raise OSError(errno.ENOTSUP, os.strerror(errno.ENOTSUP), path) from e
 
 class UOS:
   ''' A class implementing `os.` methods for a `ufs`
@@ -51,9 +49,11 @@ class UOS:
     effective_ids: bool = False,
     follow_symlinks: bool = True
   ) -> bool:
-    try: info = self._ufs.info(SafePurePosixPath(path))
-    except: return False
-    else: return True
+    with oserror(path):
+      if isinstance(path, int): raise NotImplementedError()
+      elif isinstance(path, os.PathLike): raise NotImplementedError()
+      info = self._ufs.info(SafePurePosixPath(path))
+      return info is not None
 
   def chmod(
     self,
@@ -63,7 +63,8 @@ class UOS:
     dir_fd: t.Optional[int] = None,
     follow_symlinks: bool = True
   ) -> None:
-    pass
+    with oserror(path):
+      raise NotImplementedError()
 
   def chown(
     self,
@@ -74,7 +75,8 @@ class UOS:
     dir_fd: t.Optional[int] = None,
     follow_symlinks: bool = True
   ) -> None:
-    pass
+    with oserror(path):
+      raise NotImplementedError()
 
   def open(
     self,
@@ -84,13 +86,13 @@ class UOS:
     *,
     dir_fd: t.Optional[int] = None
   ) -> int:
-    if flags & os.O_TRUNC: mode = 'wb'
-    elif flags & os.O_APPEND: mode = 'ab' + ('+' if flags & os.O_RDWR else '')
-    elif flags & os.O_RDWR: mode = 'rb+'
-    elif flags & os.O_WRONLY: mode = 'wb'
-    # elif flags & os.O_RDONLY: mode = 'rb'
-    else: mode = 'rb'
     with oserror(path):
+      if flags & os.O_TRUNC: mode = 'wb'
+      elif flags & os.O_APPEND: mode = 'ab' + ('+' if flags & os.O_RDWR else '')
+      elif flags & os.O_RDWR: mode = 'rb+'
+      elif flags & os.O_WRONLY: mode = 'wb'
+      # elif flags & os.O_RDONLY: mode = 'rb'
+      else: mode = 'rb'
       logger.debug(f"open({path}, {mode}) {flags}")
       return self._ufs.open(SafePurePosixPath(path), mode)
 
@@ -98,13 +100,15 @@ class UOS:
     self,
     fd: FileDescriptorLike
   ) -> None:
-    self._ufs.flush(fd)
+    with oserror(fd):
+      self._ufs.flush(fd)
 
   def fdatasync(
     self,
     fd: FileDescriptorLike
   ) -> None:
-    self._ufs.flush(fd)
+    with oserror(fd):
+      self._ufs.flush(fd)
 
   def stat(
     self,
@@ -137,7 +141,8 @@ class UOS:
     dst_dir_fd: t.Optional[int] = None,
     follow_symlinks: bool = True
   ) -> None:
-    pass
+    with oserror(dst):
+      raise NotImplementedError()
 
   def mkdir(
     self,
@@ -157,7 +162,8 @@ class UOS:
     *,
     dir_fd: t.Optional[int] = None
   ) -> None:
-    pass
+    with oserror(path):
+      raise NotImplementedError()
 
   def readlink(
     self,
@@ -165,7 +171,7 @@ class UOS:
     *,
     dir_fd: t.Optional[int] = None
   ) -> str:
-    pass
+    raise OSError(errno.ENOLINK)
   
   def rmdir(
     self,
@@ -190,11 +196,12 @@ class UOS:
     path: FileDescriptorOrPath,
     times: t.Union[t.Tuple[int, int], t.Tuple[float, float], None] = None,
     *,
-    ns: t.Tuple[int, int] = ...,
+    ns: t.Tuple[int, int],
     dir_fd: t.Optional[int] = None,
     follow_symlinks: bool = True
   ) -> None:
-    pass
+    with oserror(path):
+      raise NotImplementedError()
 
   def lseek(
     self,
@@ -202,14 +209,16 @@ class UOS:
     __position: int,
     __how: int = 0,
   ) -> int:
-    return self._ufs.seek(__fd, __position, __how)
+    with oserror(__fd):
+      return self._ufs.seek(__fd, __position, __how)
 
   def read(
     self,
     __fd: int,
     __length: int,
   ) -> bytes:
-    return self._ufs.read(__fd, __length)
+    with oserror(__fd):
+      return self._ufs.read(__fd, __length)
   
   def listdir(
     self,
@@ -222,7 +231,8 @@ class UOS:
     self,
     fd: int
   ) -> None:
-    return self._ufs.close(fd)
+    with oserror(fd):
+      return self._ufs.close(fd)
 
   def rename(
     self,
@@ -234,15 +244,13 @@ class UOS:
   ) -> None:
     try:
       self._ufs.rename(SafePurePosixPath(src), SafePurePosixPath(dst))
-    except FileNotFoundError: raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), src)
-    except FileExistsError: raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), dst)
-    except NotADirectoryError: raise NotADirectoryError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), pathparent(dst))
-    except IsADirectoryError: raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), dst)
-    except PermissionError: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM))
-    except NotImplementedError: raise OSError(errno.ENOTSUP, os.strerror(errno.ENOTSUP))
-    except:
-      logger.error(traceback.format_exc())
-      raise OSError(errno.ENOTSUP, os.strerror(errno.ENOTSUP))
+    except FileNotFoundError as e: raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), src) from e
+    except FileExistsError as e: raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), dst) from e
+    except NotADirectoryError as e: raise NotADirectoryError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), pathparent(dst)) from e
+    except IsADirectoryError as e: raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), dst) from e
+    except PermissionError as e: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM)) from e
+    except NotImplementedError as e: raise OSError(errno.ENOTSUP, os.strerror(errno.ENOTSUP)) from e
+    except Exception as e: raise OSError(errno.ENOTSUP, os.strerror(errno.ENOTSUP)) from e
   
   def statvfs(
     self,
@@ -259,14 +267,16 @@ class UOS:
     *,
     dir_fd: t.Optional[int] = None
   ) -> None:
-    pass
+    with oserror(dst):
+      raise NotImplementedError()
 
   def write(
     self,
     __fd: int,
     __data: ReadableBuffer,
   ) -> int:
-    return self._ufs.write(__fd, __data)
+    with oserror(__fd):
+      return self._ufs.write(__fd, __data)
 
   def truncate(
     self,
@@ -274,6 +284,10 @@ class UOS:
     length: int
   ) -> None:
     with oserror(path):
-      fd = self._ufs.open(SafePurePosixPath(path), 'r+')
-      self._ufs.truncate(fd, length)
-      self._ufs.close(fd)
+      if isinstance(path, int):
+        fd = path
+        self._ufs.truncate(fd, length)
+      else:      
+        fd = self._ufs.open(SafePurePosixPath(path), 'r+')
+        self._ufs.truncate(fd, length)
+        self._ufs.close(fd)

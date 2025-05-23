@@ -1,9 +1,10 @@
 import pathlib
 import tempfile
 import contextlib
+import typing as t
 
 @contextlib.contextmanager
-def TemporaryMountDirectory(mount_dir: str = None):
+def TemporaryMountDirectory(mount_dir: t.Optional[t.Union[str, pathlib.Path]] = None):
   if mount_dir is None:
     mount_dir_resolved = pathlib.Path(tempfile.mkdtemp())
   else:
