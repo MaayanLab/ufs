@@ -8,6 +8,15 @@ def ufs():
     pytest.skip('docker binary not available')
     return
   import sys
+  from subprocess import check_call
+  if check_call([
+    docker, 'pull', 'minio/minio'], 
+    stderr=sys.stderr,
+    stdout=sys.stdout,
+  ) != 0:
+    pytest.skip('dockerized minio not available')
+    return
+  import sys
   import uuid
   import socket
   import functools
