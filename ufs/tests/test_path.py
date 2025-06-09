@@ -1,6 +1,6 @@
 import pytest
 from ufs.access.pathlib import UPath
-from ufs.utils.pathlib import SafePurePosixPath
+from ufs.utils.pathlib import SafePurePosixPath, rmtree
 
 from ufs.tests.fixtures import ufs
 @pytest.fixture(params=[
@@ -14,18 +14,21 @@ def path(request, ufs):
     upath = UPath(ufs) / 'pathlib'
     upath.mkdir()
     yield upath
+    rmtree(upath)
   elif request.param == 'fuse':
     from ufs.access.fuse import fuse_mount
     with fuse_mount(ufs) as mount_dir:
       mount_dir = mount_dir / 'fuse'
       mount_dir.mkdir()
       yield mount_dir
+      mount_dir.rmdir()
   elif request.param == 'ffuse':
     from ufs.access.ffuse import ffuse_mount
     with ffuse_mount(ufs) as mount_dir:
       mount_dir = mount_dir / 'ffuse'
       mount_dir.mkdir()
       yield mount_dir
+      mount_dir.rmdir()
 
 def test_path(path: UPath):
   ''' Actually test that filesystem ops work as expected
