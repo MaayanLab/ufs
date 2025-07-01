@@ -63,7 +63,8 @@ class Overlay(UFS):
         from ufs.access.shutil import copyfile
         copyfile(self._lower, path, self._upper, path)
         provider, fd = self._upper, self._upper.open(path, mode, size_hint=size_hint)
-    provider, fd = self._upper, self._upper.open(path, mode, size_hint=size_hint)
+    else:
+      provider, fd = self._upper, self._upper.open(path, mode, size_hint=size_hint)
     cfd = next(self._cfd)
     self._fds[cfd] = (provider, fd)
     return cfd
