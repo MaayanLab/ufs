@@ -60,8 +60,8 @@ def ufs():
       ),
       '/storage',
     ), Memory()) as ufs:
-      ufs.mkdir(SafePurePosixPath('/'))
+      ufs.mkdir(SafePurePosixPath())
       try:
         yield ufs
       finally:
-        rmtree(ufs, '/')
+        rmtree(ufs, SafePurePosixPath())

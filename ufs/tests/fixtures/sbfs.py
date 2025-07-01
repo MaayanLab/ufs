@@ -18,10 +18,10 @@ def ufs():
       ),
       Memory()
     ) as ufs:
-      ufs.mkdir('/')
+      ufs.mkdir(SafePurePosixPath())
       try:
         yield ufs
       finally:
-        rmtree(ufs, '/')
+        rmtree(ufs, SafePurePosixPath())
   except KeyError:
     pytest.skip('Environment variables SBFS_AUTH_TOKEN and SBFS_PREFIX required for sbfs')

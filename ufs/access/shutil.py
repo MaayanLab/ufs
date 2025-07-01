@@ -85,7 +85,7 @@ def copyfile(src_ufs: UFS, src_path: SafePurePosixPath_, dst_ufs: UFS, dst_path:
     src_ufs.close(src_fd)
 
 @coerce_pathlike
-async def async_copyfile(src_ufs: AsyncUFS, src_path: SafePurePosixPath_, dst_ufs: UFS, dst_path: SafePurePosixPath_):
+async def async_copyfile(src_ufs: AsyncUFS, src_path: SafePurePosixPath_, dst_ufs: AsyncUFS, dst_path: SafePurePosixPath_):
   if src_ufs is dst_ufs:
     await src_ufs.copy(src_path, dst_path)
   else:
@@ -110,7 +110,7 @@ def movefile(src_ufs: UFS, src_path: SafePurePosixPath_, dst_ufs: UFS, dst_path:
     src_ufs.unlink(src_path)
 
 @coerce_pathlike
-async def async_movefile(src_ufs: AsyncUFS, src_path: SafePurePosixPath_, dst_ufs: UFS, dst_path: SafePurePosixPath_):
+async def async_movefile(src_ufs: AsyncUFS, src_path: SafePurePosixPath_, dst_ufs: AsyncUFS, dst_path: SafePurePosixPath_):
   if src_ufs is dst_ufs:
     if str(src_path) in str(dst_path):
       raise RuntimeError("Can't move path into itself")
@@ -133,7 +133,7 @@ def copytree(src_ufs: UFS, src_path: SafePurePosixPath_, dst_ufs: UFS, dst_path:
       copyfile(src_ufs, p, dst_ufs, dst_path / rel_path)
 
 @coerce_pathlike
-async def async_copytree(src_ufs: AsyncUFS, src_path: SafePurePosixPath_, dst_ufs: UFS, dst_path: SafePurePosixPath_, exists_ok=False):
+async def async_copytree(src_ufs: AsyncUFS, src_path: SafePurePosixPath_, dst_ufs: AsyncUFS, dst_path: SafePurePosixPath_, exists_ok=False):
   async for p, i in async_walk(src_ufs, src_path, dirfirst=True):
     rel_path = p.relative_to(src_path)
     if i['type'] == 'directory':

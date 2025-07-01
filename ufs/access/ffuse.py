@@ -41,5 +41,5 @@ if __name__ == '__main__':
   ufs = UFS.from_dict(**json.loads(os.environ.pop('UFS_SPEC')))
   mount_dir = pathlib.Path(sys.argv[1])
   assert mount_dir.exists()
-  with ffuse_mount(ufs, mount_dir, bool(os.environ.pop('UFS_READONLY', ''))):
+  with ffuse_mount(ufs, mount_dir, bool(os.environ.pop('UFS_READONLY', ''))) as _:
     threading.Event().wait()

@@ -28,25 +28,29 @@ class ProcessExitException(Exception):
     self.exitcode = exitcode
 
 def process_thread(queue: Queue):
-  proc: t.Union[mp.Process, mp_spawn.Process, Popen] = queue.get()
+  proc: t.Union[mp.Process, mp.Process, Popen] = queue.get()
+  exception = None
   try:
     if isinstance(proc, mp.Process) or isinstance(proc, mp_spawn.Process):
       proc.start()
       proc.join()
-      exc = ProcessExitException(proc.exitcode)
+      exception = ProcessExitException(proc.exitcode)
     elif isinstance(proc, Popen):
       proc.wait()
-      exc = ProcessExitException(proc.returncode)
+      exception = ProcessExitException(proc.returncode)
     else:
-      exc = NotImplementedError(type(proc))
-  except exc: pass
+      exception = NotImplementedError(type(proc))
+  except Exception as exc:
+    exception = exc
   queue.task_done()
   try:
     queue.get_nowait()
     queue.task_done()
   except Empty:
-    queue.put(exc)
-    os.kill(mp.current_process().pid, signal.SIGINT)
+    queue.put(exception)
+    current_pid = mp.current_process().pid
+    if current_pid:
+      os.kill(current_pid, signal.SIGINT)
 
 @contextlib.contextmanager
 def active_process(proc: t.Union[mp.Process, mp_spawn.Process, Popen], *, terminate_signal=signal.SIGTERM):
@@ -70,7 +74,9 @@ def active_process(proc: t.Union[mp.Process, mp_spawn.Process, Popen], *, termin
     queue.put(None)
     if isinstance(proc, mp.Process) or isinstance(proc, mp_spawn.Process):
       if proc.is_alive():
-        os.kill(proc.pid, terminate_signal)
+        proc_pid = proc.pid
+        if proc_pid:
+          os.kill(proc_pid, terminate_signal)
         proc.join()
     elif isinstance(proc, Popen):
       if proc.poll() is None:

@@ -1,6 +1,7 @@
 import pytest
 from ufs.access.pathlib import UPath
-from ufs.utils.pathlib import SafePurePosixPath, rmtree
+from ufs.access.shutil import rmtree
+from ufs.utils.pathlib import SafePurePosixPath
 
 from ufs.tests.fixtures import ufs
 @pytest.fixture(params=[
