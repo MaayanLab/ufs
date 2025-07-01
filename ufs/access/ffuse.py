@@ -34,7 +34,7 @@ def ffuse_mount(ufs: UFS, mount_dir: t.Optional[str | pathlib.Path] = None, read
           elif item['type'] == 'directory':
             ufs.rmdir(path)
         copytree(mount_dir_ufs, root, ufs, root, exists_ok=True)
-      rmtree(mount_dir_ufs, root)
+      rmtree(mount_dir_ufs, root, omit_root=True)
 
 if __name__ == '__main__':
   import os, sys, json, pathlib, threading

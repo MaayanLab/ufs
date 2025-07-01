@@ -174,16 +174,18 @@ async def async_copy(src_ufs: AsyncUFS, src_path: SafePurePosixPath_, dst_ufs: U
     await async_copyfile(src_ufs, src_path, dst_ufs, dst_path)
 
 @coerce_pathlike
-def rmtree(ufs: UFS, path: SafePurePosixPath_):
+def rmtree(ufs: UFS, path: SafePurePosixPath_, omit_root=False):
   for p, i in walk(ufs, path, dirfirst=False):
+    if p == path and omit_root: continue
     if i['type'] == 'file':
       ufs.unlink(p)
     elif i['type'] == 'directory':
       ufs.rmdir(p)
 
 @coerce_pathlike
-async def async_rmtree(ufs: AsyncUFS, path: SafePurePosixPath_):
+async def async_rmtree(ufs: AsyncUFS, path: SafePurePosixPath_, omit_root=False):
   async for p, i in async_walk(ufs, path, dirfirst=False):
+    if p == path and omit_root: continue
     if i['type'] == 'file':
       await ufs.unlink(p)
     elif i['type'] == 'directory':

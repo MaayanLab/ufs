@@ -97,10 +97,10 @@ def coerce_pathlike(func: t.Callable):
   })
   return wrapper
 
-def rmtree(P: pathlib.Path):
+def rmtree(P: pathlib.Path, omit_root=False):
   ''' This doesn't exist in normal pathlib but comes in handy
   '''
-  Q = [(P, True)] + [(path, False) for path in P.iterdir()]
+  Q = ([] if omit_root else [(P, True)]) + [(path, False) for path in P.iterdir()]
   while Q:
     path, empty = Q.pop()
     if path.is_file(): path.unlink()
