@@ -5,13 +5,17 @@ import stat
 import shutil
 import itertools
 import typing as t
-from ufs.spec import UFS
+from ufs.spec import SyncUFS, AccessScope
 
-class Local(UFS):
+class Local(SyncUFS):
   def __init__(self):
     super().__init__()
     self._cfd = iter(itertools.count(start=5))
     self._fds = {}
+
+  def scope(self) -> AccessScope:
+    return AccessScope.system
+
   def ls(self, path):
     return os.listdir(path.as_path())
   def info(self, path):

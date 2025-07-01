@@ -8,22 +8,25 @@ to the underlying ufs. This is useful when your UFS doesn't support seeks.
 '''
 
 import itertools
-from ufs.spec import UFS
+from ufs.spec import SyncUFS
 from ufs.utils.pathlib import SafePurePosixPath
 
-class Writecache(UFS):
-  def __init__(self, ufs: UFS, cache: UFS):
+class Writecache(SyncUFS):
+  def __init__(self, ufs: SyncUFS, cache: SyncUFS):
     super().__init__()
     self._ufs = ufs
     self._cache = cache
     self._cfd = iter(itertools.count(start=5))
     self._fds = {}
+  
+  def scope(self):
+    return self._ufs.scope()
 
   @staticmethod
   def from_dict(*, ufs, cache):
     return Writecache(
-      ufs=UFS.from_dict(**ufs),
-      cache=UFS.from_dict(**cache),
+      ufs=SyncUFS.from_dict(**ufs),
+      cache=SyncUFS.from_dict(**cache),
     )
 
   def to_dict(self):

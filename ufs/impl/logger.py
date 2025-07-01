@@ -7,21 +7,24 @@ ufs = Logger(UFS())
 
 import logging
 import traceback
-from ufs.spec import UFS
+from ufs.spec import SyncUFS
 
 logger = logging.getLogger(__name__)
 
-class Logger(UFS):
-  def __init__(self, ufs: UFS):
+class Logger(SyncUFS):
+  def __init__(self, ufs: SyncUFS):
     super().__init__()
     self._ufs = ufs
     self._logger = logger.getChild(repr(self._ufs))
     self._logger.warning(self._ufs)
 
+  def scope(self):
+    return self._ufs.scope()
+
   @staticmethod
   def from_dict(*, ufs):
     return Logger(
-      ufs=UFS.from_dict(**ufs),
+      ufs=SyncUFS.from_dict(**ufs),
     )
 
   def to_dict(self):

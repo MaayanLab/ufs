@@ -15,7 +15,7 @@ def path(request, ufs):
     upath = UPath(ufs) / 'pathlib'
     upath.mkdir()
     yield upath
-    rmtree(upath)
+    rmtree(upath, SafePurePosixPath())
   elif request.param == 'fuse':
     from ufs.access.fuse import fuse_mount
     with fuse_mount(ufs) as mount_dir:

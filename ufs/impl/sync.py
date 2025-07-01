@@ -4,7 +4,8 @@ import queue
 import asyncio
 import itertools
 import threading
-from ufs.spec import UFS, AsyncUFS
+import typing as t
+from ufs.spec import UFS, SyncUFS, AsyncUFS
 
 class AsyncExecutor:
   ''' Similar to ThreadPoolExecutor but submit & manage asyncio tasks
@@ -53,11 +54,19 @@ async def async_ufs_proc(reply: queue.Queue, ufs_spec):
 def event_loop_thread(send: queue.Queue, ufs_spec):
   asyncio.run(async_ufs_proc(send, ufs_spec))
 
-class Sync(UFS):
+
+class Sync(SyncUFS):
+  def __new__(cls, ufs: t.Union[UFS, AsyncUFS]):
+    if isinstance(ufs, SyncUFS): return ufs
+    else: return super().__new__(cls)
+
   def __init__(self, ufs: AsyncUFS):
     super().__init__()
     self._ufs = ufs
     self._taskid = iter(itertools.count())
+
+  def scope(self):
+    return self._ufs.scope()
 
   @staticmethod
   def from_dict(*, ufs):

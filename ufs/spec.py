@@ -3,6 +3,7 @@
 import asyncio
 import typing as t
 import itertools as it
+from enum import Enum
 from queue import Queue
 from ufs.utils.pathlib import SafePurePosixPath_
 
@@ -11,6 +12,12 @@ TypedDict = t.TypedDict if getattr(t, 'TypedDict', None) else dict
 FileOpenMode = t.Literal['rb', 'wb', 'ab', 'rb+', 'ab+'] if getattr(t, 'Literal', None) else str
 FileSeekWhence = t.Literal[0, 1, 2] if getattr(t, 'Literal', None) else int
 FileType = t.Literal['file', 'directory'] if getattr(t, 'Literal', None) else str
+
+class AccessScope(Enum):
+  thread = 0
+  process = 1
+  system = 2
+  universe = 3
 
 class FileStat(TypedDict):
   type: FileType
@@ -123,9 +130,10 @@ class DescriptorFromAtomicMixin:
       descriptor['thread'].join()
 
 class UFS:
-  ''' A generic class interface for universal file system implementations
-  '''
   CHUNK_SIZE = 5*1024
+
+  def scope(self) -> AccessScope:
+    return AccessScope.thread
 
   @staticmethod
   def from_dict(*, cls, **kwargs):
@@ -139,6 +147,9 @@ class UFS:
     cls = self.__class__
     return dict(cls=f"{cls.__module__}.{cls.__name__}")
 
+class SyncUFS(UFS):
+  ''' A generic class interface for universal file system implementations
+  '''
   # essential
   def ls(self, path: SafePurePosixPath_) -> t.List[str]:
     raise NotImplementedError()
@@ -310,23 +321,9 @@ class AsyncDescriptorFromAtomicMixin:
       await descriptor['iterator'].close()
       await descriptor['task']
 
-class AsyncUFS:
+class AsyncUFS(UFS):
   ''' A generic class interface for universal file system implementations
   '''
-  CHUNK_SIZE = 5*1024
-
-  @staticmethod
-  def from_dict(*, cls, **kwargs):
-    import importlib
-    mod, _, name = cls.rpartition('.')
-    cls = getattr(importlib.import_module(mod), name)
-    if cls.from_dict is UFS.from_dict: return cls(**kwargs)
-    else: return cls.from_dict(**kwargs)
-
-  def to_dict(self) -> t.Dict[str, t.Any]:
-    cls = self.__class__
-    return dict(cls=f"{cls.__module__}.{cls.__name__}")
-
   # essential
   async def ls(self, path: SafePurePosixPath_) -> t.List[str]:
     raise NotImplementedError()

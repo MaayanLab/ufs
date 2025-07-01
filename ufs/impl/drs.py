@@ -3,15 +3,18 @@
 Maps paths of like /hostname/opaque_id/bundle_content_by_name => drs://hostname/opaque_id
 '''
 import requests
-from ufs.spec import DescriptorFromAtomicMixin, UFS
+from ufs.spec import DescriptorFromAtomicMixin, SyncUFS, AccessScope
 from ufs.utils.one import one
 from ufs.utils.pathlib import SafePurePosixPath
 
-class DRS(DescriptorFromAtomicMixin, UFS):
+class DRS(DescriptorFromAtomicMixin, SyncUFS):
   def __init__(self, scheme='https', headers={}):
     super().__init__()
     self._scheme = scheme
     self._headers = headers
+
+  def scope(self):
+    return AccessScope.universe
 
   @staticmethod
   def from_dict(*, scheme, headers):

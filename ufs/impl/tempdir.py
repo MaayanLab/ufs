@@ -7,26 +7,33 @@ with TemporaryDirectory() as ufs:
 '''
 
 import uuid
-import tempfile
-from ufs.spec import UFS
+import typing as t
+from ufs.spec import SyncUFS
 from ufs.impl.prefix import Prefix
 from ufs.impl.local import Local
-from ufs.utils.pathlib import SafePurePosixPath
+from ufs.utils.pathlib import SafePurePosixPath, SafePurePosixPath_
 
-class TemporaryDirectory(UFS):
-  def __init__(self, ufs: UFS = None):
+class TemporaryDirectory(SyncUFS):
+  def __init__(self, ufs: t.Optional[SyncUFS] = None, tmpdir: t.Optional[SafePurePosixPath_] = None):
     super().__init__()
-    self._ufs = Prefix(Local(), tempfile.gettempdir()) if ufs is None else ufs
+    self._ufs = Prefix(Local(), '/tmp') if ufs is None else ufs
+    self._tmpdir = SafePurePosixPath(str(uuid.uuid4())) if tmpdir is None else tmpdir
+    self._outer = tmpdir is None
+
+  def scope(self):
+    return self._ufs.scope()
 
   @staticmethod
-  def from_dict(*, ufs):
+  def from_dict(*, ufs, tmpdir):
     return TemporaryDirectory(
-      ufs=UFS.from_dict(**ufs),
+      ufs=SyncUFS.from_dict(**ufs),
+      tmpdir=SafePurePosixPath(tmpdir),
     )
 
   def to_dict(self):
     return dict(super().to_dict(),
       ufs=self._ufs.to_dict(),
+      tmpdir=str(self._tmpdir),
     )
 
   def ls(self, path):
@@ -64,14 +71,15 @@ class TemporaryDirectory(UFS):
     return self._ufs.rename(self._tmpdir / src, self._tmpdir / dst)
 
   def start(self):
-    if not hasattr(self, '_tmpdir'):
-      self._tmpdir = SafePurePosixPath(f"tmp-{uuid.uuid4()}")
-      self._ufs.start()
-      self._ufs.mkdir(self._tmpdir)
+    self._ufs.start()
+    try: self._ufs.mkdir(SafePurePosixPath())
+    except IsADirectoryError: pass
+    except FileExistsError: pass
+    try: self._ufs.mkdir(SafePurePosixPath(self._tmpdir))
+    except IsADirectoryError: pass
+    except FileExistsError: pass
 
   def stop(self):
-    if hasattr(self, '_tmpdir'):
-      from ufs.access.shutil import rmtree
-      rmtree(self._ufs, self._tmpdir)
-      self._ufs.stop()
-      del self._tmpdir
+    from ufs.access.shutil import rmtree
+    if self._outer: rmtree(self._ufs, self._tmpdir)
+    self._ufs.stop()

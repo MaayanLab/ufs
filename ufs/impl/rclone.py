@@ -8,7 +8,7 @@ import requests
 import functools
 import contextlib
 import typing as t
-from ufs.spec import UFS, DescriptorFromAtomicMixin, ReadableIterator
+from ufs.spec import SyncUFS, DescriptorFromAtomicMixin, ReadableIterator, AccessScope
 from ufs.utils.pathlib import SafePurePosixPath
 
 logger = logging.getLogger(__name__)
@@ -69,11 +69,14 @@ def serve_rclone_rcd(env: dict = {}):
     wait_for(functools.partial(safe_predicate, lambda: requests.post(f"{rclone_config['url']}/config/listremotes", auth=rclone_config['auth']).status_code == 200))
     yield rclone_config
 
-class RClone(DescriptorFromAtomicMixin, UFS):
+class RClone(DescriptorFromAtomicMixin, SyncUFS):
   def __init__(self, url: str, auth: t.Tuple[str, str]):
     super().__init__()
     self._url = url
     self._auth = auth
+
+  def scope(self):
+    return AccessScope.system
 
   @staticmethod
   def from_dict(*, url, auth):

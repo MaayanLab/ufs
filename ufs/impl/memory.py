@@ -4,7 +4,7 @@ import io
 import time
 import itertools
 import dataclasses
-from ufs.spec import UFS, FileStat
+from ufs.spec import SyncUFS, AccessScope, FileStat
 from ufs.utils.pathlib import SafePurePosixPath, SafePurePosixPath_
 
 @dataclasses.dataclass
@@ -17,7 +17,7 @@ class MemoryFileDescriptor:
   path: SafePurePosixPath_
   stream: io.BytesIO
 
-class Memory(UFS):
+class Memory(SyncUFS):
   def __init__(self):
     super().__init__()
     self._inodes: dict[SafePurePosixPath_, MemoryInode] = {
@@ -31,6 +31,9 @@ class Memory(UFS):
     }
     self._cfd = iter(itertools.count(start=5))
     self._fds: dict[int, MemoryFileDescriptor] = {}
+
+  def scope(self) -> AccessScope:
+    return AccessScope.thread
 
   def ls(self, path):
     try: return list(self._dirs[path])

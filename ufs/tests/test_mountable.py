@@ -1,5 +1,5 @@
 import pytest
-from ufs.spec import UFS
+from ufs.spec import UFS, AccessScope
 
 from ufs.tests.fixtures import ufs
 
@@ -7,6 +7,8 @@ from ufs.tests.fixtures import ufs
 def test_mountable(ufs: UFS, fuse):
   from ufs.access.mount import mount
   from ufs.access.pathlib import UPath
+  if fuse and ufs.scope().value < AccessScope.system.value:
+    pytest.skip('UFS store access scope not compatible with fuse')
   with mount(ufs, fuse=fuse) as mount_dir:
     (mount_dir/'test').mkdir(parents=True)
     with (mount_dir/'test'/'a').open('w+') as fw:

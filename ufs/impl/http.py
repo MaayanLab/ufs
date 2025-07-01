@@ -1,14 +1,17 @@
 ''' UFS interface for accessing HTTP
 '''
 import requests
-from ufs.spec import DescriptorFromAtomicMixin, UFS
+from ufs.spec import DescriptorFromAtomicMixin, SyncUFS, AccessScope
 
-class HTTP(DescriptorFromAtomicMixin, UFS):
+class HTTP(DescriptorFromAtomicMixin, SyncUFS):
   def __init__(self, netloc: str, scheme='https', headers={}) -> None:
     super().__init__()
     self._scheme = scheme
     self._netloc = netloc
     self._headers = headers
+
+  def scope(self):
+    return AccessScope.universe
 
   @staticmethod
   def from_dict(*, netloc, scheme, headers):
@@ -19,7 +22,7 @@ class HTTP(DescriptorFromAtomicMixin, UFS):
     )
 
   def to_dict(self):
-    return dict(UFS.to_dict(self),
+    return dict(SyncUFS.to_dict(self),
       netloc=self._netloc,
       scheme=self._scheme,
       headers=self._headers,

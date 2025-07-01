@@ -2,12 +2,12 @@
 '''
 import logging
 import itertools
-from ufs.spec import UFS
+from ufs.spec import SyncUFS
 
 logger = logging.getLogger(__name__)
 
-class Overlay(UFS):
-  def __init__(self, lower: UFS, upper: UFS):
+class Overlay(SyncUFS):
+  def __init__(self, lower: SyncUFS, upper: SyncUFS):
     '''
     lower: fallback read from here
     upper: writes go here
@@ -18,11 +18,14 @@ class Overlay(UFS):
     self._fds = {}
     self._cfd = iter(itertools.count())
 
+  def scope(self):
+    return min([self._lower.scope(), self._upper.scope()], key=lambda s: s.value)
+
   @staticmethod
   def from_dict(*, lower, upper):
     return Overlay(
-      lower=UFS.from_dict(**lower),
-      upper=UFS.from_dict(**upper),
+      lower=SyncUFS.from_dict(**lower),
+      upper=SyncUFS.from_dict(**upper),
     )
 
   def to_dict(self):

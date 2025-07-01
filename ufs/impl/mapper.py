@@ -3,14 +3,14 @@
 import logging
 import itertools
 import typing as t
-from ufs.spec import UFS
+from ufs.spec import SyncUFS
 from ufs.utils.pathlib import SafePurePosixPath
 from ufs.utils.prefix_tree import create_prefix_tree_from_paths, search_prefix_tree, list_prefix_tree
 
 logger = logging.getLogger(__name__)
 
-class Mapper(UFS):
-  def __init__(self, pathmap: t.Dict[str, UFS]):
+class Mapper(SyncUFS):
+  def __init__(self, pathmap: t.Dict[str, SyncUFS]):
     '''
     pathmap: dict
       A mapping from [path to map onto the target filesystem]: UFS
@@ -20,6 +20,9 @@ class Mapper(UFS):
     self._prefix_tree = create_prefix_tree_from_paths(list(self._pathmap.keys()))
     self._fds = {}
     self._cfd = iter(itertools.count())
+
+  def scope(self):
+    return min([ufs.scope() for ufs in self._pathmap.values()], key=lambda s: s.value)
 
   def _matchpath(self, path):
     ''' Return (fs, path) depending on whether we hit a mapped paths or not
@@ -33,7 +36,7 @@ class Mapper(UFS):
   def from_dict(*, pathmap):
     return Mapper(
       pathmap={
-        k: UFS.from_dict(**v)
+        k: SyncUFS.from_dict(**v)
         for k, v in pathmap.items()
       },
     )

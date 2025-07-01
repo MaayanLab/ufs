@@ -3,7 +3,7 @@ import ftplib
 import itertools
 import contextlib
 import threading as t
-from ufs.spec import DescriptorFromAtomicMixin, UFS, QueuedIterator, ReadableIterator
+from ufs.spec import AccessScope, DescriptorFromAtomicMixin, SyncUFS, QueuedIterator, ReadableIterator
 from ufs.utils.one import one
 
 # unlike ftplib.FTP_TLS, this version connects over SSL first and then runs FTP over it
@@ -57,7 +57,7 @@ def ftp_client_thread(send: queue.Queue, recv: queue.Queue, opts: dict):
     recv.task_done()
   ftp.quit()
 
-class FTP(DescriptorFromAtomicMixin, UFS):
+class FTP(DescriptorFromAtomicMixin, SyncUFS):
   def __init__(self, host: str, user = '', passwd = '', port = 21, tls = False, starttls = None) -> None:
     super().__init__()
     self._host = host
@@ -67,6 +67,9 @@ class FTP(DescriptorFromAtomicMixin, UFS):
     self._tls = tls
     self._starttls = True if port == 21 and tls and starttls is None else bool(starttls)
     self._taskid = iter(itertools.count())
+
+  def scope(self):
+    return AccessScope.universe
 
   @staticmethod
   def from_dict(*, host, user, passwd, port, tls, starttls):
@@ -80,7 +83,7 @@ class FTP(DescriptorFromAtomicMixin, UFS):
     )
 
   def to_dict(self):
-    return dict(UFS.to_dict(self),
+    return dict(SyncUFS.to_dict(self),
       host=self._host,
       user=self._user,
       passwd=self._passwd,

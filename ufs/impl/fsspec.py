@@ -12,7 +12,7 @@ import functools
 from ufs.utils.cache import TTLCache
 from ufs.utils.pathlib import pathname, pathparent
 from datetime import datetime
-from ufs.spec import UFS
+from ufs.spec import SyncUFS, AccessScope
 
 def fsspec_info_to_ufs_info(info):
   atime = info.get('atime', time.time())
@@ -42,7 +42,7 @@ def fsspec_ls(fs, path: str):
 def fsspec_info(fs, path: str):
   return fsspec_info_to_ufs_info(fs.info(path))
 
-class FSSpec(UFS):
+class FSSpec(SyncUFS):
   def __init__(self, fs, ttl=60):
     super().__init__()
     self._ttl = ttl
@@ -51,6 +51,16 @@ class FSSpec(UFS):
     self._fds = {}
     self._ls_cache = TTLCache(resolve=functools.partial(fsspec_ls, self._fs), ttl=ttl)
     self._info_cache = TTLCache(resolve=functools.partial(fsspec_info, self._fs), ttl=ttl)
+
+  def scope(self):
+    {
+      ('file','local'): AccessScope.system,
+      ('s3','s3a'): AccessScope.universe,
+      ('sftp','ssh'): AccessScope.universe,
+      'http': AccessScope.universe,
+      'ftp': AccessScope.universe,
+    }.get(self._fs.protocol, AccessScope.thread)
+    return AccessScope.thread
 
   @staticmethod
   def from_dict(*, fs, ttl):
@@ -130,7 +140,7 @@ class FSSpec(UFS):
       if not hasattr(self._fs, 'rename'): raise NotImplementedError()
       self._fs.rename(self._path(src), self._path(dst))
     except NotImplementedError:
-      UFS.rename(self, src, dst)
+      SyncUFS.rename(self, src, dst)
     self._info_cache.discard(self._path(src))
     self._ls_cache.discard(self._path(src.parent))
     self._info_cache.discard(self._path(dst))

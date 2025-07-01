@@ -3,11 +3,12 @@
 import stat
 import paramiko
 import itertools
+import typing as t
 
-from ufs.spec import UFS
+from ufs.spec import SyncUFS, AccessScope
 
-class SFTP(UFS):
-  def __init__(self, host: str, username: str = None, password: str = None, port: int = 22):
+class SFTP(SyncUFS):
+  def __init__(self, host: str, username: t.Optional[str] = None, password: t.Optional[str] = None, port: int = 22):
     super().__init__()
     self._host = host
     self._port = port
@@ -15,6 +16,9 @@ class SFTP(UFS):
     self._password = password
     self._cfd = iter(itertools.count(start=5))
     self._fds = {}
+
+  def scope(self):
+    return AccessScope.universe
 
   @staticmethod
   def from_dict(*, host, username, password, port):

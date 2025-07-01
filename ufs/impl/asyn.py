@@ -2,7 +2,8 @@
 '''
 import asyncio
 import itertools
-from ufs.spec import UFS, AsyncUFS
+import typing as t
+from ufs.spec import UFS, SyncUFS, AsyncUFS
 
 def ufs_thread(loop: asyncio.AbstractEventLoop, send: asyncio.PriorityQueue, recv: asyncio.PriorityQueue, ufs_spec):
   ufs = UFS.from_dict(**ufs_spec)
@@ -22,15 +23,22 @@ def ufs_thread(loop: asyncio.AbstractEventLoop, send: asyncio.PriorityQueue, rec
     recv.task_done()
 
 class Async(AsyncUFS):
-  def __init__(self, ufs: UFS):
+  def __new__(cls, ufs: t.Union[UFS, AsyncUFS]):
+    if isinstance(ufs, AsyncUFS): return ufs
+    else: return super().__new__(cls)
+
+  def __init__(self, ufs: SyncUFS):
     super().__init__()
     self._ufs = ufs
     self._taskid = iter(itertools.count())
 
+  def scope(self):
+    return self._ufs.scope()
+
   @staticmethod
   def from_dict(*, ufs):
     return Async(
-      ufs=UFS.from_dict(**ufs),
+      ufs=AsyncUFS.from_dict(**ufs),
     )
 
   def to_dict(self):

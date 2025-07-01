@@ -57,6 +57,7 @@ def ufs():
         access_key=MINIO_ROOT_USER,
         secret_access_key=MINIO_ROOT_PASSWORD,
         endpoint_url=f"http://localhost:{port}",
+        ttl=0, # TTL >0 won't work when modifying from other processes
       ),
       '/storage',
     ), Memory()) as ufs:

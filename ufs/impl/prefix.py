@@ -6,21 +6,24 @@ ufs = Prefix(UFS(), '/some/subpath/')
 '''
 
 import logging
-from ufs.spec import UFS
+from ufs.spec import SyncUFS
 from ufs.utils.pathlib import SafePurePosixPath, PathLike
 
 logger = logging.getLogger(__name__)
 
-class Prefix(UFS):
-  def __init__(self, ufs: UFS, prefix: PathLike = '/'):
+class Prefix(SyncUFS):
+  def __init__(self, ufs: SyncUFS, prefix: PathLike = '/'):
     super().__init__()
     self._ufs = ufs
     self._prefix = SafePurePosixPath(prefix)
 
+  def scope(self):
+    return self._ufs.scope()
+
   @staticmethod
   def from_dict(*, ufs, prefix):
     return Prefix(
-      ufs=UFS.from_dict(**ufs),
+      ufs=SyncUFS.from_dict(**ufs),
       prefix=prefix,
     )
 

@@ -2,11 +2,11 @@
 these operations are expensive such as with remote stores.
 '''
 
-from ufs.spec import UFS
+from ufs.spec import SyncUFS
 from ufs.utils.cache import TTLCache
 
-class DirCache(UFS):
-  def __init__(self, ufs: UFS, ttl=60):
+class DirCache(SyncUFS):
+  def __init__(self, ufs: SyncUFS, ttl=60):
     super().__init__()
     self._ttl = ttl
     self._ufs = ufs
@@ -14,9 +14,12 @@ class DirCache(UFS):
     self._info_cache = TTLCache(resolve=self._ufs.info, ttl=ttl)
     self._fds = {}
 
+  def scope(self):
+    return self._ufs.scope()
+
   @staticmethod
   def from_dict(*, ufs, ttl):
-    return DirCache(UFS.from_dict(**ufs), ttl=ttl)
+    return DirCache(SyncUFS.from_dict(**ufs), ttl=ttl)
 
   def to_dict(self):
     return dict(super().to_dict(), ufs=self._ufs.to_dict(), ttl=self._ttl)

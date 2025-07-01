@@ -5,12 +5,12 @@ This is based off of s3fs from the fsspec ecosystem, but with several patches to
 
 import errno
 import typing as t
-from ufs.spec import UFS, FileStat
+from ufs.spec import SyncUFS, FileStat, AccessScope
 from ufs.impl.fsspec import FSSpec
 from s3fs import S3FileSystem
 from s3fs.core import S3FileSystem
 
-class S3(FSSpec, UFS):
+class S3(FSSpec, SyncUFS):
   ''' FSSpec's S3 has some quirks we'll want to deal with
   '''
   def __init__(self, anon = False, access_key = None, secret_access_key = None, endpoint_url='https://s3.amazonaws.com', ttl=60):
@@ -20,7 +20,10 @@ class S3(FSSpec, UFS):
     self._endpoint_url = endpoint_url
     super().__init__(S3FileSystem(anon=anon, key=access_key, secret=secret_access_key,
                           client_kwargs=dict(endpoint_url=endpoint_url)), ttl=ttl)
-  
+
+  def scope(self):
+    return AccessScope.universe
+
   @staticmethod
   def from_dict(*, anon, access_key, secret_access_key, endpoint_url, ttl):
     return S3(
@@ -32,7 +35,7 @@ class S3(FSSpec, UFS):
     )
 
   def to_dict(self):
-    return dict(UFS.to_dict(self),
+    return dict(SyncUFS.to_dict(self),
       anon=self._anon,
       access_key=self._access_key,
       secret_access_key=self._secret_access_key,
@@ -54,11 +57,13 @@ class S3(FSSpec, UFS):
   def info(self, path) -> FileStat:
     if str(path).count('/') > 1:
       try:
-        info = {**FSSpec.info(self, path/'_')}
+        info: t.Any = {**FSSpec.info(self, path/'_')}
         info['type']='directory'
         return info
-      except FileNotFoundError: pass
-    return FSSpec.info(self, path)
+      except FileNotFoundError:
+        pass
+    info: t.Any = {**FSSpec.info(self, path)}
+    return info
 
   def mkdir(self, path):
     try: FSSpec.info(self, path)
@@ -87,7 +92,7 @@ class S3(FSSpec, UFS):
   def rename(self, src, dst):
     ''' s3fs doesn't support rename, use the fallback
     '''
-    UFS.rename(self, src, dst)
+    SyncUFS.rename(self, src, dst)
     self._info_cache.discard(self._path(src))
     self._ls_cache.discard(self._path(src.parent))
     self._info_cache.discard(self._path(dst))

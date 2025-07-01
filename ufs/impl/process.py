@@ -3,12 +3,12 @@
 
 import itertools
 import multiprocessing as mp
-from ufs.spec import UFS
+from ufs.spec import SyncUFS, AccessScope
 
 mp_spawn = mp.get_context('spawn')
 
 def ufs_proc(send: mp_spawn.Queue, recv: mp_spawn.Queue, ufs_spec):
-  ufs = UFS.from_dict(**ufs_spec)
+  ufs = SyncUFS.from_dict(**ufs_spec)
   while True:
     msg = recv.get()
     i, op, args, kwargs = msg
@@ -21,16 +21,19 @@ def ufs_proc(send: mp_spawn.Queue, recv: mp_spawn.Queue, ufs_spec):
     else:
       send.put([i, res, None])
 
-class Process(UFS):
-  def __init__(self, ufs: UFS):
+class Process(SyncUFS):
+  def __init__(self, ufs: SyncUFS):
     super().__init__()
     self._ufs = ufs
     self._taskid = iter(itertools.count())
 
+  def scope(self):
+    return AccessScope.process
+
   @staticmethod
   def from_dict(*, ufs):
     return Process(
-      ufs=UFS.from_dict(**ufs),
+      ufs=SyncUFS.from_dict(**ufs),
     )
 
   def to_dict(self):

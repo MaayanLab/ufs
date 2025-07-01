@@ -4,7 +4,7 @@ import json
 import aiohttp
 import logging
 from datetime import datetime
-from ufs.spec import AsyncUFS, AsyncDescriptorFromAtomicMixin
+from ufs.spec import AsyncUFS, AsyncDescriptorFromAtomicMixin, AccessScope
 from ufs.utils.pathlib import SafePurePosixPath_
 from ufs.utils.cache import TTLCacheStore, Result
 from ufs.utils.one import one
@@ -22,6 +22,9 @@ class SBFS(AsyncDescriptorFromAtomicMixin, AsyncUFS):
     self._drs_endpoint = drs_endpoint
     self._ttl = ttl
     self._sbfs_cache = TTLCacheStore(ttl=self._ttl)
+
+  def scope(self):
+    return AccessScope.universe
 
   @staticmethod
   def from_dict(*, auth_token, api_endpoint, drs_endpoint, ttl):
