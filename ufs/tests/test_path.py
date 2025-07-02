@@ -1,7 +1,6 @@
 import pytest
 from ufs.access.pathlib import UPath
-from ufs.access.shutil import rmtree
-from ufs.utils.pathlib import SafePurePosixPath
+from ufs.utils.pathlib import SafePurePosixPath, rmtree
 
 from ufs.tests.fixtures import ufs
 @pytest.fixture(params=[
@@ -15,7 +14,7 @@ def path(request, ufs):
     upath = UPath(ufs) / 'pathlib'
     upath.mkdir()
     yield upath
-    rmtree(upath, SafePurePosixPath())
+    rmtree(upath)
   elif request.param == 'fuse':
     from ufs.access.fuse import fuse_mount
     with fuse_mount(ufs) as mount_dir:
