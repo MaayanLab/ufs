@@ -48,7 +48,8 @@ class SafePurePosixPath_:
       import os
       if os.name == 'posix':
         return pathlib.Path(self._path)
-      root = pathlib.Path('/').absolute()
+      else:
+        root = pathlib.Path('/').absolute()
     return root / self._path.relative_to('/')
 
 PathLike = t.Union[bytes, str, os.PathLike, pathlib.PurePosixPath, SafePurePosixPath_]

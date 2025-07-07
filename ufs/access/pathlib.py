@@ -151,7 +151,7 @@ class UPathBinaryIO(RawBinaryIO):
 class AsyncUPath:
   ''' A class implementing `pathlib.Path` methods for a `ufs`
   '''
-  def __init__(self, ufs: AsyncUFS, path: PathLike = '/') -> None:
+  def __init__(self, ufs: UFS, path: PathLike = '/') -> None:
     self._ufs = ufs
     self._path = SafePurePosixPath(path)
 
@@ -191,13 +191,13 @@ class AsyncUPath:
 
   async def is_file(self):
     try:
-      return (await self._ufs.info(self._path)['type']) == 'file'
+      return (await self._ufs.info(self._path))['type'] == 'file'
     except FileNotFoundError:
       return False
 
   async def is_dir(self):
     try:
-      return (await self._ufs.info(self._path)['type']) == 'directory'
+      return (await self._ufs.info(self._path))['type'] == 'directory'
     except FileNotFoundError:
       return False
 

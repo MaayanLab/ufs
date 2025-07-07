@@ -24,7 +24,10 @@ def ufs_thread(loop: asyncio.AbstractEventLoop, send: asyncio.PriorityQueue, rec
 
 class Async(AsyncUFS):
   def __new__(cls, ufs: t.Union[UFS, AsyncUFS]):
+    # Prevent unnecessary compositional recursion
+    from ufs.impl.sync import Sync
     if isinstance(ufs, AsyncUFS): return ufs
+    elif isinstance(ufs, Sync): return ufs._ufs
     else: return super().__new__(cls)
 
   def __init__(self, ufs: SyncUFS):

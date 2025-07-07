@@ -29,7 +29,7 @@ def oserror(path: t.Optional[FileDescriptorOrPath] = None):
   except PermissionError as e: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path) from e
   except OSError as e: raise e
   except NotImplementedError as e: raise OSError(errno.ENOTSUP, os.strerror(errno.ENOTSUP), path) from e
-  except Exception as e: raise OSError(errno.ENOTSUP, os.strerror(errno.ENOTSUP), path) from e
+  except Exception as e: raise OSError(errno.EROFS, os.strerror(errno.EROFS), path) from e
 
 class UOS:
   ''' A class implementing `os.` methods for a `ufs`

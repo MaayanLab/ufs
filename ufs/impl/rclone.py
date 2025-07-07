@@ -139,8 +139,8 @@ class RClone(DescriptorFromAtomicMixin, SyncUFS):
       logger.info(f"{ret}")
       try:
         item = next(iter(item for item in ret['list'] if item['Name'] == path.name))
-      except StopIteration:
-        raise FileNotFoundError()
+      except StopIteration as e:
+        raise FileNotFoundError() from e
       logger.info(f"{item}")
       if item['IsDir']:
         return {

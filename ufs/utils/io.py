@@ -243,10 +243,10 @@ class AsyncBufferedIO(AsyncBufferedBinaryIO):
     self.encoding = encoding
   
   async def read(self, amnt = -1) -> str:
-    return await super().read(amnt).decode(self.encoding)
+    return (await super().read(amnt)).decode(self.encoding)
 
   async def write(self, data: str) -> int:
     return await super().write(data.encode(self.encoding))
 
   async def readline(self) -> bytes:
-    return await super().readline().decode(self.encoding)
+    return (await super().readline()).decode(self.encoding)
