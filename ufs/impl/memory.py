@@ -2,6 +2,7 @@
 '''
 import io
 import time
+import errno
 import itertools
 import dataclasses
 from ufs.spec import SyncUFS, AccessScope, FileStat
@@ -90,7 +91,7 @@ class Memory(SyncUFS):
   def rmdir(self, path):
     if path not in self._inodes: raise FileNotFoundError(path)
     if path not in self._dirs: raise NotADirectoryError(path)
-    if self._dirs[path]: raise RuntimeError('Directory not Empty')
+    if self._dirs[path]: raise OSError(errno.ENOTEMPTY)
     self._dirs[path.parent].remove(path.name)
     del self._dirs[path]
     del self._inodes[path]
