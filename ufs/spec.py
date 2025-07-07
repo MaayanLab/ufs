@@ -201,8 +201,8 @@ class SyncUFS(UFS):
       buf = self.read(src_fd, self.CHUNK_SIZE)
       if not buf: break
       self.write(dst_fd, buf)
-    self.close(dst)
-    self.close(src)
+    self.close(dst_fd)
+    self.close(src_fd)
 
   def rename(self, src: SafePurePosixPath_, dst: SafePurePosixPath_):
     self.copy(src, dst)
@@ -374,8 +374,8 @@ class AsyncUFS(UFS):
       buf = await self.read(src_fd, self.CHUNK_SIZE)
       if not buf: break
       await self.write(dst_fd, buf)
-    await self.close(dst)
-    await self.close(src)
+    await self.close(dst_fd)
+    await self.close(src_fd)
 
   async def rename(self, src: SafePurePosixPath_, dst: SafePurePosixPath_):
     await self.copy(src, dst)
