@@ -60,7 +60,7 @@ class Writecache(SyncUFS):
     elif 'r' in mode or 'a' in mode:
       fr = self._ufs.open(path, 'rb')
       fd = next(self._cfd)
-      fw = self._cache.open(SafePurePosixPath(f"/{fd}"), mode='wb+')
+      fw = self._cache.open(SafePurePosixPath(f"/{fd}"), mode='wb')
       while True:
         buf = self._ufs.read(fr, self.CHUNK_SIZE)
         if not buf: break
@@ -71,7 +71,7 @@ class Writecache(SyncUFS):
       return fd
     else:
       fd = next(self._cfd)
-      fw = self._cache.open(SafePurePosixPath(f"/{fd}"), mode='wb+')
+      fw = self._cache.open(SafePurePosixPath(f"/{fd}"), mode='wb')
       self._fds[fd] = (self._cache, fw, path)
       return fd
   

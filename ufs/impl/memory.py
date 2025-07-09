@@ -25,6 +25,9 @@ class Memory(SyncUFS):
       SafePurePosixPath(): MemoryInode({
         'type': 'directory',
         'size': 0,
+        'atime': time.time(),
+        'ctime': time.time(),
+        'mtime': time.time(),
       })
     }
     self._dirs: dict[SafePurePosixPath_, set[SafePurePosixPath_]] = {
@@ -84,7 +87,7 @@ class Memory(SyncUFS):
   def mkdir(self, path):
     if path in self._inodes: raise FileExistsError(path)
     if path.parent not in self._dirs: raise FileNotFoundError(path.parent)
-    self._inodes[path] = MemoryInode({ 'type': 'directory', 'size': 0 })
+    self._inodes[path] = MemoryInode({ 'type': 'directory', 'size': 0, 'atime': time.time(), 'ctime': time.time(), 'mtime': time.time() })
     self._dirs[path] = set()
     self._dirs[path.parent].add(path.name)
 
@@ -92,6 +95,7 @@ class Memory(SyncUFS):
     if path not in self._inodes: raise FileNotFoundError(path)
     if path not in self._dirs: raise NotADirectoryError(path)
     if self._dirs[path]: raise OSError(errno.ENOTEMPTY)
+    if path == SafePurePosixPath(): raise PermissionError()
     self._dirs[path.parent].remove(path.name)
     del self._dirs[path]
     del self._inodes[path]

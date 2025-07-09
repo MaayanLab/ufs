@@ -71,7 +71,8 @@ class SFTP(SyncUFS):
     return fd
 
   def seek(self, fd, pos, whence = 0):
-    return self._fds[fd].seek(pos, whence)
+    self._fds[fd].seek(pos, whence)
+    return self._fds[fd]._pos
   def read(self, fd, amnt):
     return self._fds[fd].read(amnt)
   def write(self, fd, data: bytes):

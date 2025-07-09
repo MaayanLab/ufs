@@ -3,9 +3,7 @@ import json
 import typing as t
 from ufs.utils.one import one
 
-TypedDict = t.TypedDict if getattr(t, 'TypedDict', None) else dict
-
-class URLParsed(TypedDict):
+class URLParsed(t.TypedDict):
   proto: t.Optional[str]
   path: str
   fragment: t.Optional[str]
@@ -21,10 +19,10 @@ def parse_url(url) -> URLParsed:
   '''
   m = url_expr.match(url)
   if not m: raise RuntimeError(f"Invalid url: {url}")
-  return m.groupdict()
+  return URLParsed(**m.groupdict())
 
 
-class NetlocParsed(TypedDict):
+class NetlocParsed(t.TypedDict):
   username: t.Optional[str]
   password: t.Optional[str]
   host: t.Optional[str]
@@ -39,13 +37,14 @@ def parse_netloc(url_parsed: URLParsed) -> NetlocParsed:
   m = netloc_expr.match(netloc)
   if not m: raise RuntimeError(f"Invalid netloc: {netloc}")
   netloc_parsed = m.groupdict()
-  return dict(
-    netloc_parsed,
+  return NetlocParsed(
+    username=netloc_parsed.get('username'),
+    password=netloc_parsed.get('password'),
+    host=netloc_parsed.get('host'),
     netloc=netloc,
     port=int(netloc_parsed['port']) if netloc_parsed.get('port') else None,
     path=(sep or '') + (path or ''),
   )
-
 
 def try_json_loads(s):
   try: return json.loads(s)

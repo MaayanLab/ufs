@@ -7,11 +7,9 @@ from enum import Enum
 from queue import Queue
 from ufs.utils.pathlib import SafePurePosixPath_
 
-TypedDict = t.TypedDict if getattr(t, 'TypedDict', None) else dict
-
-FileOpenMode = t.Literal['rb', 'wb', 'ab', 'rb+', 'ab+'] if getattr(t, 'Literal', None) else str
-FileSeekWhence = t.Literal[0, 1, 2] if getattr(t, 'Literal', None) else int
-FileType = t.Literal['file', 'directory'] if getattr(t, 'Literal', None) else str
+FileOpenMode: t.TypeAlias = t.Literal['rb', 'wb', 'ab', 'rb+', 'ab+']
+FileSeekWhence: t.TypeAlias = t.Literal[0, 1, 2]
+FileType: t.TypeAlias = t.Literal['file', 'directory']
 
 class AccessScope(Enum):
   thread = 0
@@ -19,27 +17,12 @@ class AccessScope(Enum):
   system = 2
   universe = 3
 
-class FileStat(TypedDict):
+class FileStat(t.TypedDict):
   type: FileType
   size: int
   atime: t.Optional[float]
   ctime: t.Optional[float]
   mtime: t.Optional[float]
-
-class AtomicFromDescriptorMixin:
-  def cat(self, path: SafePurePosixPath_) -> t.Iterator[bytes]:
-    fd = self.open(path, 'rb')
-    while True:
-      buf = self.read(fd, self.CHUNK_SIZE)
-      if not buf: break
-      yield buf
-    self.close(fd)
-
-  def put(self, path: SafePurePosixPath_, data: t.Iterator[bytes], *, size_hint: int = None):
-    fd = self.open(path, 'wb', size_hint=size_hint)
-    for buf in data:
-      self.write(fd, buf)
-    self.close(fd)
 
 class ReadableIterator:
   def __init__(self, iterator: t.Iterator[bytes]) -> None:
@@ -99,10 +82,11 @@ class DescriptorFromAtomicMixin:
     else:
       raise NotImplementedError(mode)
 
-  def seek(self, fd: int, pos: int, whence: FileSeekWhence = 0):
+  def seek(self, fd: int, pos: int, whence: FileSeekWhence = 0) -> int:
     descriptor = self._fds[fd]
     if whence != 0: raise NotImplementedError()
     if descriptor['iterator'].pos != pos: raise NotImplementedError()
+    return pos
 
   def read(self, fd: int, amnt: int) -> bytes:
     descriptor = self._fds[fd]
@@ -156,9 +140,9 @@ class SyncUFS(UFS):
   def info(self, path: SafePurePosixPath_) -> FileStat:
     raise NotImplementedError()
 
-  def open(self, path: SafePurePosixPath_, mode: FileOpenMode, *, size_hint: int = None) -> int:
+  def open(self, path: SafePurePosixPath_, mode: FileOpenMode, *, size_hint: t.Optional[int] = None) -> int:
     raise NotImplementedError()
-  def seek(self, fd: int, pos: int, whence: FileSeekWhence = 0):
+  def seek(self, fd: int, pos: int, whence: FileSeekWhence = 0) -> int:
     raise NotImplementedError()
   def read(self, fd: int, amnt: int) -> bytes:
     raise NotImplementedError()
@@ -184,25 +168,26 @@ class SyncUFS(UFS):
   def stop(self):
     pass
 
-  def cat(self, path: SafePurePosixPath_) -> t.Iterator[bytes]:
-    yield from AtomicFromDescriptorMixin.cat(self, path)
-
-  def put(self, path: SafePurePosixPath_, data: t.Iterator[bytes], *, size_hint: int = None):
-    AtomicFromDescriptorMixin.put(self, path, data, size_hint=size_hint)
-
   # fallback
+  def cat(self, path: SafePurePosixPath_) -> t.Iterator[bytes]:
+    fd = self.open(path, 'rb')
+    while True:
+      buf = self.read(fd, self.CHUNK_SIZE)
+      if not buf: break
+      yield buf
+    self.close(fd)
+
+  def put(self, path: SafePurePosixPath_, data: t.Iterator[bytes], *, size_hint: t.Optional[int] = None):
+    fd = self.open(path, 'wb', size_hint=size_hint)
+    for buf in data:
+      self.write(fd, buf)
+    self.close(fd)
+
   def copy(self, src: SafePurePosixPath_, dst: SafePurePosixPath_):
     src_info = self.info(src)
     if src_info['type'] != 'file':
       raise IsADirectoryError(str(src))
-    src_fd = self.open(src, 'rb')
-    dst_fd = self.open(dst, 'wb', size_hint=src_info['size'])
-    while True:
-      buf = self.read(src_fd, self.CHUNK_SIZE)
-      if not buf: break
-      self.write(dst_fd, buf)
-    self.close(dst_fd)
-    self.close(src_fd)
+    self.put(dst, self.cat(src), size_hint=src_info['size'])
 
   def rename(self, src: SafePurePosixPath_, dst: SafePurePosixPath_):
     self.copy(src, dst)
@@ -217,22 +202,6 @@ class SyncUFS(UFS):
 
   def __repr__(self) -> str:
     return f"UFS({repr(self.to_dict())})"
-
-
-class AsyncAtomicFromDescriptorMixin:
-  async def cat(self, path: SafePurePosixPath_) -> t.AsyncIterator[bytes]:
-    fd = await self.open(path, 'rb')
-    while True:
-      buf = await self.read(fd, self.CHUNK_SIZE)
-      if not buf: break
-      yield buf
-    await self.close(fd)
-
-  async def put(self, path: SafePurePosixPath_, data: t.AsyncIterator[bytes], *, size_hint: int = None):
-    fd = await self.open(path, 'wb', size_hint=size_hint)
-    async for buf in data:
-      await self.write(fd, buf)
-    await self.close(fd)
 
 class ReadableAsyncIterator:
   def __init__(self, iterator: t.AsyncIterator[bytes]) -> None:
@@ -263,7 +232,7 @@ class QueuedAsyncIterator(asyncio.Queue):
     pass
   async def close(self):
     await self.put(None)
-  async def __aiter__(self):
+  async def __aiter__(self) -> t.AsyncIterator[bytes]:
     while True:
       item = await self.get()
       if item is None: break
@@ -276,7 +245,7 @@ class AsyncDescriptorFromAtomicMixin:
     self._cfd = iter(it.count(start=5))
     self._fds = {}
 
-  async def open(self, path: SafePurePosixPath_, mode: FileOpenMode, *, size_hint: int = None) -> int:
+  async def open(self, path: SafePurePosixPath_, mode: FileOpenMode, *, size_hint: t.Optional[int] = None) -> int:
     if '+' in mode: raise NotImplementedError()
     if 'r' in mode:
       fd = next(self._cfd)
@@ -284,17 +253,20 @@ class AsyncDescriptorFromAtomicMixin:
       return fd
     elif 'w' in mode:
       queued_iterator = QueuedAsyncIterator()
-      task = asyncio.create_task(self.put(path, queued_iterator, size_hint=size_hint))
+      task = asyncio.create_task(self.put(path, queued_iterator.__aiter__(), size_hint=size_hint))
       fd = next(self._cfd)
       self._fds[fd] = dict(mode='w', iterator=queued_iterator, task=task)
       return fd
     else:
       raise NotImplementedError(mode)
 
-  async def seek(self, fd: int, pos: int, whence: FileSeekWhence = 0):
+  async def seek(self, fd: int, pos: int, whence: FileSeekWhence = 0) -> int:
     descriptor = self._fds[fd]
-    if whence != 0: raise NotImplementedError()
-    if descriptor['iterator'].pos != pos: raise NotImplementedError()
+    if not (
+      (whence == 0 and descriptor['iterator'].pos == pos)
+      or (whence == 1 and pos == 0)
+    ): raise NotImplementedError()
+    return pos
 
   async def read(self, fd: int, amnt: int) -> bytes:
     descriptor = self._fds[fd]
@@ -329,9 +301,9 @@ class AsyncUFS(UFS):
     raise NotImplementedError()
   async def info(self, path: SafePurePosixPath_) -> FileStat:
     raise NotImplementedError()
-  async def open(self, path: SafePurePosixPath_, mode: FileOpenMode, *, size_hint: int = None) -> int:
+  async def open(self, path: SafePurePosixPath_, mode: FileOpenMode, *, size_hint: t.Optional[int] = None) -> int:
     raise NotImplementedError()
-  async def seek(self, fd: int, pos: int, whence: FileSeekWhence = 0):
+  async def seek(self, fd: int, pos: int, whence: FileSeekWhence = 0) -> int:
     raise NotImplementedError()
   async def read(self, fd: int, amnt: int) -> bytes:
     raise NotImplementedError()
@@ -345,11 +317,18 @@ class AsyncUFS(UFS):
     raise NotImplementedError()
 
   async def cat(self, path: SafePurePosixPath_) -> t.AsyncIterator[bytes]:
-    async for chunk in AsyncAtomicFromDescriptorMixin.cat(self, path):
-      yield chunk
+    fd = await self.open(path, 'rb')
+    while True:
+      buf = await self.read(fd, self.CHUNK_SIZE)
+      if not buf: break
+      yield buf
+    await self.close(fd)
 
   async def put(self, path: SafePurePosixPath_, data: t.AsyncIterator[bytes], *, size_hint: int = None):
-    await AsyncAtomicFromDescriptorMixin.put(self, path, data, size_hint=size_hint)
+    fd = await self.open(path, 'wb', size_hint=size_hint)
+    async for buf in data:
+      await self.write(fd, buf)
+    await self.close(fd)
 
   # optional
   async def mkdir(self, path: SafePurePosixPath_):
@@ -368,14 +347,7 @@ class AsyncUFS(UFS):
     src_info = await self.info(src)
     if src_info['type'] != 'file':
       raise IsADirectoryError(str(src))
-    src_fd = await self.open(src, 'rb')
-    dst_fd = await self.open(dst, 'wb', size_hint=src_info['size'])
-    while True:
-      buf = await self.read(src_fd, self.CHUNK_SIZE)
-      if not buf: break
-      await self.write(dst_fd, buf)
-    await self.close(dst_fd)
-    await self.close(src_fd)
+    await self.put(dst, self.cat(src), size_hint=src_info['size'])
 
   async def rename(self, src: SafePurePosixPath_, dst: SafePurePosixPath_):
     await self.copy(src, dst)

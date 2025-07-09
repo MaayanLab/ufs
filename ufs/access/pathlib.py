@@ -1,13 +1,13 @@
 ''' Implement a pathlib.Path-like interface to UFS
 '''
-from ufs.spec import UFS, AsyncUFS
+from ufs.spec import SyncUFS, AsyncUFS
 from ufs.utils.pathlib import SafePurePosixPath, PathLike
 from ufs.utils.io import RawBinaryIO, BufferedBinaryIO, BufferedIO, AsyncRawBinaryIO, AsyncBufferedBinaryIO, AsyncBufferedIO
 
 class UPath:
   ''' A class implementing `pathlib.Path` methods for a `ufs`
   '''
-  def __init__(self, ufs: UFS, path: PathLike = '/') -> None:
+  def __init__(self, ufs: SyncUFS, path: PathLike = '/') -> None:
     self._ufs = ufs
     self._path = SafePurePosixPath(path)
   
@@ -59,7 +59,7 @@ class UPath:
 
   def open(self, mode: str, encoding='utf-8', newline=b'\n'):
     if 'b' in mode:
-      return BufferedBinaryIO(
+      fh = BufferedBinaryIO(
         UPathBinaryIO(self._ufs, self._ufs.open(self._path, mode)),
         chunk_size=self._ufs.CHUNK_SIZE,
         newline=newline,
@@ -67,12 +67,15 @@ class UPath:
     else:
       if mode.endswith('+'): mode_ = mode[:-1] + 'b+'
       else: mode_ = mode + 'b'
-      return BufferedIO(
+      fh = BufferedIO(
         UPathBinaryIO(self._ufs, self._ufs.open(self._path, mode_)),
         chunk_size=self._ufs.CHUNK_SIZE,
         encoding=encoding,
         newline=newline,
       )
+    if 'a' in mode:
+      fh.seek(0, 2)
+    return fh
 
   def unlink(self):
     self._ufs.unlink(self._path)
@@ -132,7 +135,7 @@ class UPath:
           Q += [p for p in path.iterdir()]
 
 class UPathBinaryIO(RawBinaryIO):
-  def __init__(self, ufs: UFS, fd: int):
+  def __init__(self, ufs: SyncUFS, fd: int):
     self._ufs = ufs
     self._fd = fd
   def seek(self, amnt: int, whence: int = 0):
@@ -151,7 +154,7 @@ class UPathBinaryIO(RawBinaryIO):
 class AsyncUPath:
   ''' A class implementing `pathlib.Path` methods for a `ufs`
   '''
-  def __init__(self, ufs: UFS, path: PathLike = '/') -> None:
+  def __init__(self, ufs: AsyncUFS, path: PathLike = '/') -> None:
     self._ufs = ufs
     self._path = SafePurePosixPath(path)
 
@@ -203,7 +206,7 @@ class AsyncUPath:
 
   async def open(self, mode: str, encoding='utf-8', newline=b'\n'):
     if 'b' in mode:
-      return AsyncBufferedBinaryIO(
+      fh = AsyncBufferedBinaryIO(
         AsyncUPathBinaryIO(self._ufs, await self._ufs.open(self._path, mode)),
         chunk_size=self._ufs.CHUNK_SIZE,
         newline=newline,
@@ -211,12 +214,15 @@ class AsyncUPath:
     else:
       if mode.endswith('+'): mode_ = mode[:-1] + 'b+'
       else: mode_ = mode + 'b'
-      return AsyncBufferedIO(
+      fh = AsyncBufferedIO(
         AsyncUPathBinaryIO(self._ufs, await self._ufs.open(self._path, mode_)),
         chunk_size=self._ufs.CHUNK_SIZE,
         encoding=encoding,
         newline=newline,
       )
+    if 'a' in mode:
+      await fh.seek(0, 2)
+    return fh
 
   async def unlink(self):
     await self._ufs.unlink(self._path)
