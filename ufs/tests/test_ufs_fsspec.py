@@ -4,13 +4,14 @@ from pathlib import PurePosixPath, PureWindowsPath
 import pytest
 
 from ufs.access.fsspec import UFSfsspecFileSystem
-from ufs.impl.logger import Logger
+from ufs.impl.tempdir import TemporaryDirectory
 from ufs.impl.memory import Memory
 from fsspec.implementations.local import LocalFileSystem, make_path_posix
 
 @pytest.fixture
 def m():
-    yield UFSfsspecFileSystem(Logger(Memory()))
+    with TemporaryDirectory(Memory()) as ufs:
+        yield UFSfsspecFileSystem(ufs)
 
 def test_1(m):
     m.touch("/somefile")  # NB: is found with or without initial /

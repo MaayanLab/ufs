@@ -11,7 +11,7 @@ class UFSfsspecFileSystem(AbstractFileSystem):
 
   @classmethod
   def _strip_protocol(cls, path):
-    path = AbstractFileSystem._strip_protocol(path)
+    path = super()._strip_protocol(path)
     if isinstance(path, list):
       return [str(SafePurePosixPath(p)) for p in path]
     return str(SafePurePosixPath(path))
@@ -19,6 +19,7 @@ class UFSfsspecFileSystem(AbstractFileSystem):
   def mkdir(self, path, create_parents=True, **kwargs):
     path = self._strip_protocol(path)
     if isinstance(path, list): raise NotImplementedError()
+    if SafePurePosixPath(path) == SafePurePosixPath(): return
     (self.upath / path).mkdir(parents=create_parents)
   
   def makedirs(self, path, exist_ok=False):
@@ -29,6 +30,7 @@ class UFSfsspecFileSystem(AbstractFileSystem):
   def rmdir(self, path):
     path = self._strip_protocol(path)
     if isinstance(path, list): raise NotImplementedError()
+    if SafePurePosixPath(path) == SafePurePosixPath(): return
     (self.upath / path).rmdir()
   
   def ls(self, path, detail=True, **kwargs):
@@ -58,25 +60,17 @@ class UFSfsspecFileSystem(AbstractFileSystem):
   def rm_file(self, path):
     path = self._strip_protocol(path)
     if isinstance(path, list): raise NotImplementedError()
-    try:
-      return (self.upath/path).unlink()
-    except IsADirectoryError:
-      return (self.upath/path).rmdir()
+    if SafePurePosixPath(path) == SafePurePosixPath(): return
+    try: return (self.upath/path).unlink()
+    except IsADirectoryError: return (self.upath/path).rmdir()
 
   def cp_file(self, path1, path2, **kwargs):
     path1 = self._strip_protocol(path1)
     path2 = self._strip_protocol(path2)
-    if isinstance(path2, list):
+    if isinstance(path1, list) or isinstance(path2, list):
       raise NotImplementedError()
-    if isinstance(path1, list):
-      for p1 in path1:
-        self.cp_file(p1, SafePurePosixPath(path2)/SafePurePosixPath(p1).name)
-    elif (self.upath/path1).is_dir():
-      for p1 in (self.upath/path1).iterdir():
-        self.cp_file(str(p1), SafePurePosixPath(path2)/p1.name)
-    else:
-      (self.upath/path2).parent.mkdir(parents=True, exist_ok=True)
-      if (self.upath/path2).is_dir():
-        self.ufs.copy(SafePurePosixPath(path1), SafePurePosixPath(path2)/SafePurePosixPath(path1).name)
-      else:
-        self.ufs.copy(SafePurePosixPath(path1), SafePurePosixPath(path2))
+    if (self.upath / path1).is_file():
+      (self.upath / path2).parent.mkdir(parents=True, exist_ok=True)
+      if (self.upath / path2).is_file():
+        (self.upath / path2).unlink()
+      self.ufs.copy(SafePurePosixPath(path1), SafePurePosixPath(path2))
