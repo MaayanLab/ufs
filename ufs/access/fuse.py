@@ -18,7 +18,7 @@ def fuseerror():
   try: yield
   except FuseOSError as e: raise e
   except OSError as e: raise FuseOSError(e.errno) from e
-  except Exception as e: raise FuseOSError(errno.ENOTSUP) from e
+  except Exception as e: raise FuseOSError(errno.EROFS) from e
 
 class FUSEOps(LoggingMixIn, Operations):
   def __init__(self, ufs: UFS, readonly = False) -> None:
@@ -61,7 +61,7 @@ class FUSEOps(LoggingMixIn, Operations):
       else:
         return self._os.fsync(fh)
 
-  def getattr(self, path, fh=None):
+  def getattr(self, path, fd=None):
     with fuseerror():
       st = self._os.stat(path)
       return dict((key, getattr(st, key)) for key in (
@@ -81,7 +81,10 @@ class FUSEOps(LoggingMixIn, Operations):
   def mknod(self, path, *args, **kwargs):
     with fuseerror():
       if self._readonly: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path)
-      return self._os.mknod(path, *args, **kwargs)
+      try:
+        return self._os.mknod(path, *args, **kwargs)
+      except NotImplementedError as e:
+        raise FuseOSError(errno.EROFS) from e
 
   def open(self, path, *args, **kwargs):
     with fuseerror():
@@ -127,7 +130,13 @@ class FUSEOps(LoggingMixIn, Operations):
       return self._os.rename(old, new)
 
   def statfs(self, path):
-    return dict(f_bsize=512, f_blocks=4096, f_bavail=2048)
+    FUSE_SUPER_MAGIC=0x65735546
+    return dict(
+      f_type=FUSE_SUPER_MAGIC,
+      f_bsize=512,
+      f_blocks=4096,
+      f_bavail=2048,
+    )
 
   # def statfs(self, path):
   #   stv = self._os.statvfs(path)

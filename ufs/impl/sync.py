@@ -57,7 +57,10 @@ def event_loop_thread(send: queue.Queue, ufs_spec):
 
 class Sync(SyncUFS):
   def __new__(cls, ufs: t.Union[UFS, AsyncUFS]):
+    # Prevent unnecessary compositional recursion
+    from ufs.impl.asyn import Async
     if isinstance(ufs, SyncUFS): return ufs
+    elif isinstance(ufs, Async): return ufs._ufs
     else: return super().__new__(cls)
 
   def __init__(self, ufs: AsyncUFS):

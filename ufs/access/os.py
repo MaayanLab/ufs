@@ -7,7 +7,7 @@ import errno
 import typing as t
 import logging
 import contextlib
-from ufs.spec import UFS
+from ufs.spec import SyncUFS, FileSeekWhence
 from ufs.utils.pathlib import SafePurePosixPath, pathparent
 
 logger = logging.getLogger(__name__)
@@ -29,12 +29,12 @@ def oserror(path: t.Optional[FileDescriptorOrPath] = None):
   except PermissionError as e: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path) from e
   except OSError as e: raise e
   except NotImplementedError as e: raise OSError(errno.ENOTSUP, os.strerror(errno.ENOTSUP), path) from e
-  except Exception as e: raise OSError(errno.ENOTSUP, os.strerror(errno.ENOTSUP), path) from e
+  except Exception as e: raise OSError(errno.EROFS, os.strerror(errno.EROFS), path) from e
 
 class UOS:
   ''' A class implementing `os.` methods for a `ufs`
   '''
-  def __init__(self, ufs: UFS):
+  def __init__(self, ufs: SyncUFS):
     self._ufs = ufs
 
   def __repr__(self):
@@ -127,9 +127,9 @@ class UOS:
         int(os.environ.get('UID', 1000)),#st_uid
         int(os.environ.get('GID', 1000)),#st_gid
         info['size'] if info['type'] == 'file' else 0,#st_size
-        info.get('atime', time.time()),#st_atime
-        info.get('ctime', time.time()),#st_mtime
-        info.get('mtime', time.time()),#st_ctime
+        info.get('atime') or time.time(),#st_atime
+        info.get('ctime') or time.time(),#st_mtime
+        info.get('mtime') or time.time(),#st_ctime
       ])
 
   def link(
@@ -207,7 +207,7 @@ class UOS:
     self,
     __fd: int,
     __position: int,
-    __how: int = 0,
+    __how: FileSeekWhence = 0,
   ) -> int:
     with oserror(__fd):
       return self._ufs.seek(__fd, __position, __how)
@@ -246,7 +246,7 @@ class UOS:
       self._ufs.rename(SafePurePosixPath(src), SafePurePosixPath(dst))
     except FileNotFoundError as e: raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), src) from e
     except FileExistsError as e: raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), dst) from e
-    except NotADirectoryError as e: raise NotADirectoryError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), pathparent(dst)) from e
+    except NotADirectoryError as e: raise NotADirectoryError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), pathparent(str(dst))) from e
     except IsADirectoryError as e: raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), dst) from e
     except PermissionError as e: raise PermissionError(errno.EPERM, os.strerror(errno.EPERM)) from e
     except NotImplementedError as e: raise OSError(errno.ENOTSUP, os.strerror(errno.ENOTSUP)) from e
@@ -288,6 +288,6 @@ class UOS:
         fd = path
         self._ufs.truncate(fd, length)
       else:      
-        fd = self._ufs.open(SafePurePosixPath(path), 'r+')
+        fd = self._ufs.open(SafePurePosixPath(path), 'rb+')
         self._ufs.truncate(fd, length)
         self._ufs.close(fd)

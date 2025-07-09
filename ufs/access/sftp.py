@@ -10,13 +10,13 @@ import traceback
 import typing as t
 
 from ufs.access.os import UOS
-from ufs.spec import UFS
+from ufs.spec import SyncUFS
 from ufs.utils.pathlib import pathname
 
 logger = logging.getLogger(__name__)
 
 class USSHServer(paramiko.ServerInterface):
-  def __init__(self, ufs: UFS, username: str, password: str = None):
+  def __init__(self, ufs: SyncUFS, username: str, password: t.Optional[str] = None):
     super().__init__()
     self._ufs = ufs
     self._uos = UOS(self._ufs)
@@ -188,15 +188,15 @@ class USFTPServer(paramiko.SFTPServerInterface):
   def readlink(self, path) -> t.Union[str, int]:
     return paramiko.SFTPServer.convert_errno(errno.ENOENT)
 
-def ufs_via_sftp(ufs: dict, host: str, port: int, username: str, password: str = None, keyfile: str = None, BACKLOG = 10):
+def ufs_via_sftp(ufs: dict, host: str, port: int, username: str, password: t.Optional[str] = None, keyfile: t.Optional[str] = None, BACKLOG = 10):
   import socket
   if keyfile is None: keyfile = str(pathlib.Path('~/.ssh/id_rsa').expanduser())
-  with UFS.from_dict(**ufs) as ufs:
+  with SyncUFS.from_dict(**ufs) as ufs_:
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
     server_socket.bind((host, port))
     server_socket.listen(BACKLOG)
-    server = USSHServer(ufs, username, password)
+    server = USSHServer(ufs_, username, password)
     connections = []
 
     while True:
@@ -218,7 +218,7 @@ def ufs_via_sftp(ufs: dict, host: str, port: int, username: str, password: str =
         continue
 
 @contextlib.contextmanager
-def serve_ufs_via_sftp(ufs: UFS, host: str, port: int, username: str, password: str = None, keyfile: str = None, BACKLOG = 10):
+def serve_ufs_via_sftp(ufs: SyncUFS, host: str, port: int, username: str, password: t.Optional[str] = None, keyfile: t.Optional[str] = None, BACKLOG = 10):
   import multiprocessing as mp
   from ufs.utils.process import active_process
   from ufs.utils.polling import wait_for

@@ -1,5 +1,6 @@
 ''' Some custom IO Base generics since the core python ones are a bit odd
 '''
+import typing as t
 
 class Buffer:
   def __init__(self) -> None:
@@ -34,7 +35,7 @@ class Buffer:
 
 
 class RawBinaryIO:
-  def seek(self, amnt: int, whence: int = 0):
+  def seek(self, amnt: int, whence: int = 0) -> int:
     raise NotImplementedError()
   def read(self, amnt = -1) -> bytes:
     raise NotImplementedError()
@@ -44,7 +45,7 @@ class RawBinaryIO:
     pass
   def close(self):
     raise NotImplementedError()
-  def truncate(self, length: int = None):
+  def truncate(self, length: t.Optional[int] = None):
     raise NotImplementedError()
   def tell(self) -> int:
     raise NotImplementedError()
@@ -58,13 +59,14 @@ class BufferedBinaryIO:
     self.newline = newline
     self.closed = False
 
-  def seek(self, amnt: int, whence: int = 0):
+  def seekable(self):
+    return True
+
+  def seek(self, amnt: int, whence: int = 0) -> int:
     assert not self.closed
-    self.raw.seek(amnt, whence)
-    if whence == 0: self.pos = amnt
-    elif whence == 1: self.pos += amnt
-    elif whence == 2: self.pos = -amnt
+    self.pos = self.raw.seek(amnt, whence)
     self.read_buffer.trim(self.pos)
+    return self.pos
 
   def read(self, amnt = -1) -> bytes:
     assert not self.closed
@@ -106,7 +108,7 @@ class BufferedBinaryIO:
   def tell(self) -> int:
     return self.pos
 
-  def truncate(self, length: int = None):
+  def truncate(self, length: t.Optional[int] = None):
     self.raw.truncate(self.pos if length is None else length)
 
   def close(self):
@@ -128,8 +130,8 @@ class BufferedBinaryIO:
       yield line
 
 class BufferedIO(BufferedBinaryIO):
-  def __init__(self, raw: RawBinaryIO, chunk_size = 4096, newline = '\n', encoding = 'utf-8') -> None:
-    super().__init__(raw, chunk_size=chunk_size, newline=newline.encode(encoding) if type(newline) == str else newline)
+  def __init__(self, raw: RawBinaryIO, chunk_size = 4096, newline: t.Union[str, bytes] = '\n', encoding = 'utf-8') -> None:
+    super().__init__(raw, chunk_size=chunk_size, newline=newline.encode(encoding) if isinstance(newline, str) else newline)
     self.encoding = encoding
   
   def read(self, amnt = -1) -> str:
@@ -138,13 +140,13 @@ class BufferedIO(BufferedBinaryIO):
   def write(self, data: str) -> int:
     return super().write(data.encode(self.encoding))
 
-  def readline(self) -> bytes:
+  def readline(self) -> str:
     return super().readline().decode(self.encoding)
 
 
 
 class AsyncRawBinaryIO:
-  async def seek(self, amnt: int, whence: int = 0):
+  async def seek(self, amnt: int, whence: int = 0) -> int:
     raise NotImplementedError()
   async def read(self, amnt = -1) -> bytes:
     raise NotImplementedError()
@@ -154,7 +156,7 @@ class AsyncRawBinaryIO:
     pass
   async def tell(self) -> int:
     raise NotImplementedError()
-  async def truncate(self, length: int = None):
+  async def truncate(self, length: t.Optional[int] = None):
     raise NotImplementedError()
   async def close(self):
     raise NotImplementedError()
@@ -168,13 +170,11 @@ class AsyncBufferedBinaryIO:
     self.newline = newline
     self.closed = False
 
-  async def seek(self, amnt: int, whence: int = 0):
+  async def seek(self, amnt: int, whence: int = 0) -> int:
     assert not self.closed
-    await self.raw.seek(amnt, whence)
-    if whence == 0: self.pos = amnt
-    elif whence == 1: self.pos += amnt
-    elif whence == 2: self.pos = -amnt
+    self.pos = await self.raw.seek(amnt, whence)
     self.read_buffer.trim(self.pos)
+    return self.pos
 
   async def read(self, amnt = -1) -> bytes:
     assert not self.closed
@@ -216,7 +216,7 @@ class AsyncBufferedBinaryIO:
   async def tell(self) -> int:
     return self.pos
 
-  async def truncate(self, length: int = None):
+  async def truncate(self, length: t.Optional[int] = None):
     await self.raw.truncate(self.pos if length is None else length)
 
   async def close(self):
@@ -238,15 +238,15 @@ class AsyncBufferedBinaryIO:
       yield line
 
 class AsyncBufferedIO(AsyncBufferedBinaryIO):
-  def __init__(self, raw: AsyncRawBinaryIO, chunk_size = 4096, newline = '\n', encoding = 'utf-8') -> None:
-    super().__init__(raw, chunk_size=chunk_size, newline=newline.encode(encoding) if type(newline) == str else newline)
+  def __init__(self, raw: AsyncRawBinaryIO, chunk_size = 4096, newline: t.Union[str, bytes] = '\n', encoding = 'utf-8') -> None:
+    super().__init__(raw, chunk_size=chunk_size, newline=newline.encode(encoding) if isinstance(newline, str) else newline)
     self.encoding = encoding
   
   async def read(self, amnt = -1) -> str:
-    return await super().read(amnt).decode(self.encoding)
+    return (await super().read(amnt)).decode(self.encoding)
 
   async def write(self, data: str) -> int:
     return await super().write(data.encode(self.encoding))
 
-  async def readline(self) -> bytes:
-    return await super().readline().decode(self.encoding)
+  async def readline(self) -> str:
+    return (await super().readline()).decode(self.encoding)
