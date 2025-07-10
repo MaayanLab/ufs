@@ -35,18 +35,37 @@ def proto_rclone(url):
   from ufs.impl.prefix import Prefix
   return Prefix(RClone(**parse_fragment_qs(url)), url['path'])
 
-@register_proto_handler('s3')
-def proto_s3(url):
+@register_proto_handler('s3fs')
+def proto_s3fs(url):
+  ''' Use s3fs
+  '''
   from ufs.impl.s3fs import S3
   from ufs.impl.prefix import Prefix
   return Prefix(S3(**parse_fragment_qs(url)), url['path'])
 
 @register_proto_handler('minio')
 def proto_minio(url):
+  ''' Use minio
+  '''
   from ufs.impl.minio import Minio
   from ufs.impl.prefix import Prefix
   return Prefix(Minio(**parse_fragment_qs(url)), url['path'])
 
+@register_proto_handler('s3')
+def proto_s3(url):
+  ''' We default to minio for s3 but use s3fs-style arguments for backwards compatibility
+  '''
+  try:
+    from ufs.impl.minio import Minio
+  except ImportError:
+    return proto_s3fs(url)
+  from ufs.impl.prefix import Prefix
+  fragment_qs = parse_fragment_qs(url)
+  endpoint_url_parsed = parse_url(fragment_qs.get('endpoint_url') or 'https://s3.amazonaws.com')
+  endpoint_netloc_parsed = parse_netloc(endpoint_url_parsed)
+  netloc = f"{endpoint_netloc_parsed['host']}:{endpoint_netloc_parsed['port']}" if endpoint_netloc_parsed['port'] else endpoint_netloc_parsed['host']
+  return Prefix(Minio(netloc, access_key=fragment_qs['access_key'], secret_key=fragment_qs['secret_access_key'], secure=endpoint_url_parsed['proto'] == 'https'), url['path'])
+  
 @register_proto_handler('sbfs')
 def proto_sbfs(url):
   from ufs.impl.prefix import Prefix
