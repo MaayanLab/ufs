@@ -1,6 +1,6 @@
 ''' Implement a pathlib.Path-like interface to UFS
 '''
-from ufs.spec import SyncUFS, AsyncUFS
+from ufs.spec import SyncUFS, AsyncUFS, FileSeekWhence
 from ufs.utils.pathlib import SafePurePosixPath, PathLike
 from ufs.utils.io import RawBinaryIO, BufferedBinaryIO, BufferedIO, AsyncRawBinaryIO, AsyncBufferedBinaryIO, AsyncBufferedIO
 
@@ -138,7 +138,7 @@ class UPathBinaryIO(RawBinaryIO):
   def __init__(self, ufs: SyncUFS, fd: int):
     self._ufs = ufs
     self._fd = fd
-  def seek(self, amnt: int, whence: int = 0):
+  def seek(self, amnt: int, whence: FileSeekWhence = 0):
     return self._ufs.seek(self._fd, amnt, whence)
   def read(self, amnt: int = -1) -> bytes:
     return self._ufs.read(self._fd, amnt)
@@ -286,7 +286,7 @@ class AsyncUPathBinaryIO(AsyncRawBinaryIO):
   def __init__(self, ufs: AsyncUFS, fd: int):
     self._ufs = ufs
     self._fd = fd
-  async def seek(self, amnt: int, whence: int = 0):
+  async def seek(self, amnt: int, whence: FileSeekWhence = 0):
     return await self._ufs.seek(self._fd, amnt, whence)
   async def read(self, amnt: int = -1) -> bytes:
     return await self._ufs.read(self._fd, amnt)

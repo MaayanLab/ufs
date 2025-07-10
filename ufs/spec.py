@@ -65,7 +65,7 @@ class DescriptorFromAtomicMixin:
     self._cfd = iter(it.count(start=5))
     self._fds = {}
 
-  def open(self, path: SafePurePosixPath_, mode: FileOpenMode, *, size_hint: int = None) -> int:
+  def open(self, path: SafePurePosixPath_, mode: FileOpenMode, *, size_hint: t.Optional[int] = None) -> int:
     if '+' in mode: raise NotImplementedError()
     if 'r' in mode:
       fd = next(self._cfd)
@@ -84,8 +84,10 @@ class DescriptorFromAtomicMixin:
 
   def seek(self, fd: int, pos: int, whence: FileSeekWhence = 0) -> int:
     descriptor = self._fds[fd]
-    if whence != 0: raise NotImplementedError()
-    if descriptor['iterator'].pos != pos: raise NotImplementedError()
+    if not (
+      (whence == 0 and descriptor['iterator'].pos == pos)
+      or (whence == 1 and pos == 0)
+    ): raise NotImplementedError(f"{descriptor['iterator'].pos} != {pos}")
     return pos
 
   def read(self, fd: int, amnt: int) -> bytes:
@@ -324,7 +326,7 @@ class AsyncUFS(UFS):
       yield buf
     await self.close(fd)
 
-  async def put(self, path: SafePurePosixPath_, data: t.AsyncIterator[bytes], *, size_hint: int = None):
+  async def put(self, path: SafePurePosixPath_, data: t.AsyncIterator[bytes], *, size_hint: t.Optional[int] = None):
     fd = await self.open(path, 'wb', size_hint=size_hint)
     async for buf in data:
       await self.write(fd, buf)
