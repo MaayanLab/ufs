@@ -22,7 +22,7 @@ def ufs():
   import functools
   from urllib.request import Request, urlopen
   from subprocess import Popen
-  from ufs.impl.s3 import S3
+  from ufs.impl.s3fs import S3
   from ufs.impl.prefix import Prefix
   from ufs.impl.memory import Memory
   from ufs.impl.writecache import Writecache

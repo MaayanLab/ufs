@@ -37,7 +37,7 @@ def proto_rclone(url):
 
 @register_proto_handler('s3')
 def proto_s3(url):
-  from ufs.impl.s3 import S3
+  from ufs.impl.s3fs import S3
   from ufs.impl.prefix import Prefix
   return Prefix(S3(**parse_fragment_qs(url)), url['path'])
 

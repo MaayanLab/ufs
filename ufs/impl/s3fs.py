@@ -3,6 +3,7 @@
 This is based off of s3fs from the fsspec ecosystem, but with several patches to successfully pass our test suite.
 '''
 
+from __future__ import absolute_import
 import errno
 import typing as t
 from ufs.spec import SyncUFS, FileStat, AccessScope
