@@ -41,6 +41,12 @@ def proto_s3(url):
   from ufs.impl.prefix import Prefix
   return Prefix(S3(**parse_fragment_qs(url)), url['path'])
 
+@register_proto_handler('minio')
+def proto_minio(url):
+  from ufs.impl.minio import Minio
+  from ufs.impl.prefix import Prefix
+  return Prefix(Minio(**parse_fragment_qs(url)), url['path'])
+
 @register_proto_handler('sbfs')
 def proto_sbfs(url):
   from ufs.impl.prefix import Prefix
