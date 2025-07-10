@@ -14,6 +14,9 @@ class SafePurePosixPath_:
   @property
   def parent(self):
     return SafePurePosixPath_(self._path.parent)
+  @property
+  def parts(self):
+    return self._path.parts
   @staticmethod
   def _from_parts(parts):
     root, *ps = parts

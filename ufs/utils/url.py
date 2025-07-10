@@ -25,7 +25,7 @@ def parse_url(url) -> URLParsed:
 class NetlocParsed(t.TypedDict):
   username: t.Optional[str]
   password: t.Optional[str]
-  host: t.Optional[str]
+  host: str
   port: t.Optional[int]
   netloc: str
   path: str
@@ -40,7 +40,7 @@ def parse_netloc(url_parsed: URLParsed) -> NetlocParsed:
   return NetlocParsed(
     username=netloc_parsed.get('username'),
     password=netloc_parsed.get('password'),
-    host=netloc_parsed.get('host'),
+    host=netloc_parsed['host'],
     netloc=netloc,
     port=int(netloc_parsed['port']) if netloc_parsed.get('port') else None,
     path=(sep or '') + (path or ''),

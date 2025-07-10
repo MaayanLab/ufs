@@ -57,8 +57,8 @@ def proto_ftp(url):
   return Prefix(
     FTP(
       host=netloc_parsed['host'],
-      user=netloc_parsed.get('username'),
-      passwd=netloc_parsed.get('password'),
+      user=netloc_parsed.get('username') or '',
+      passwd=netloc_parsed.get('password') or '',
       port=netloc_parsed.get('port') or 21,
       tls=url['proto'] == 'ftps',
       **parse_fragment_qs(url)
