@@ -17,7 +17,7 @@ def ufs():
   import tempfile
   from ufs.impl.rclone import RClone, serve_rclone_rcd
   from ufs.impl.prefix import Prefix
-  from ufs.impl.writecache import Writecache
+  from ufs.impl.rwcache import RWCache
   from ufs.impl.memory import Memory
   from ufs.impl.logger import Logger
   with tempfile.TemporaryDirectory() as tmp:
@@ -30,5 +30,5 @@ def ufs():
       RCLONE_CONFIG_LOCAL_TYPE='alias',
       RCLONE_CONFIG_LOCAL_REMOTE=str(tmp/'data'),
     )) as rclone_config:
-      with Writecache(Prefix(Logger(RClone(**rclone_config)), '/local'), Memory()) as ufs:
+      with RWCache(Prefix(Logger(RClone(**rclone_config)), '/local'), Memory()) as ufs:
         yield ufs

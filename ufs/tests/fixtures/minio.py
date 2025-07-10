@@ -23,8 +23,8 @@ def ufs():
   from urllib.request import Request, urlopen
   from subprocess import Popen
   from ufs.impl.prefix import Prefix
-  from ufs.impl.memory import Memory
-  from ufs.impl.writecache import Writecache
+  from ufs.impl.tempdir import TemporaryDirectory
+  from ufs.impl.rwcache import RWCache
   from ufs.impl.minio import Minio
   from ufs.utils.polling import wait_for, safe_predicate
   from ufs.utils.process import active_process
@@ -52,7 +52,7 @@ def ufs():
     # wait for minio to be running & ready
     wait_for(functools.partial(safe_predicate, lambda: urlopen(Request(f"http://localhost:{port}/minio/health/live", method='HEAD')).status == 200))
     # create an fsspec connection to the minio server
-    with Writecache(Prefix(
+    with RWCache(Prefix(
       Minio(
         f"localhost:{port}",
         access_key=MINIO_ROOT_USER,
@@ -60,7 +60,7 @@ def ufs():
         secure=False,
       ),
       '/storage',
-    ), Memory()) as ufs:
+    ), TemporaryDirectory()) as ufs:
       ufs.mkdir(SafePurePosixPath())
       try:
         yield ufs

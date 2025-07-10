@@ -13,8 +13,8 @@ def ufs():
     import tempfile
     from subprocess import Popen
     from ufs.impl.ftp import FTP
-    from ufs.impl.memory import Memory
-    from ufs.impl.writecache import Writecache
+    from ufs.impl.rwcache import RWCache
+    from ufs.impl.tempdir import TemporaryDirectory
     from ufs.utils.polling import wait_for
     from ufs.utils.process import active_process
     from ufs.utils.socket import nc_z, autosocket
@@ -34,10 +34,10 @@ def ufs():
         # wait for ftp to be running & ready
         wait_for(lambda: nc_z(host, port))
         # create an fsspec connection to the minio server
-        with Writecache(FTP(
+        with RWCache(FTP(
           host=host,
           user=ftp_user,
           passwd=ftp_passwd,
           port=port,
-        ), Memory()) as ufs:
+        ), TemporaryDirectory()) as ufs:
           yield ufs
