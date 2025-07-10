@@ -2,7 +2,6 @@ import pytest
 import shutil
 from ufs.spec import UFS, AccessScope
 from ufs.impl.sync import Sync
-from ufs.impl.logger import Logger
 
 from ufs.tests.fixtures import ufs
 @pytest.mark.parametrize('fuse', [True, False])
@@ -11,7 +10,7 @@ def test_mountable(ufs: UFS, fuse):
   from ufs.access.pathlib import UPath
   if fuse and ufs.scope().value < AccessScope.system.value:
     pytest.skip('UFS store access scope not compatible with fuse')
-  with mount(Logger(Sync(ufs)), fuse=fuse) as mount_dir:
+  with mount(Sync(ufs), fuse=fuse) as mount_dir:
     # verify we can do things in the mount
     path = mount_dir / ('fuse' if fuse else 'ffuse')
     path.mkdir()

@@ -6,9 +6,8 @@ except ImportError: paramiko = None
 
 @pytest.fixture
 def ufs():
-  from ufs.impl.logger import Logger
   from ufs.impl.memory import Memory
-  with Logger(Memory()) as ufs:
+  with Memory() as ufs:
     yield ufs
 
 @pytest.fixture
