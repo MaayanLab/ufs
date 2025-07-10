@@ -5,7 +5,7 @@ import time
 import errno
 import itertools
 import dataclasses
-from ufs.spec import SyncUFS, AccessScope, FileStat
+from ufs.spec import SyncUFS, AccessScope, FileStat, AsyncUFS
 from ufs.utils.pathlib import SafePurePosixPath, SafePurePosixPath_
 
 @dataclasses.dataclass
