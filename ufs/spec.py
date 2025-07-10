@@ -87,7 +87,7 @@ class DescriptorFromAtomicMixin:
     if not (
       (whence == 0 and descriptor['iterator'].pos == pos)
       or (whence == 1 and pos == 0)
-    ): raise NotImplementedError(f"{descriptor['iterator'].pos} != {pos}")
+    ): raise NotImplementedError()
     return pos
 
   def read(self, fd: int, amnt: int) -> bytes:
