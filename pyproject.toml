@@ -24,6 +24,7 @@ pytest-asyncio = "^0.21.1"
 pytest-cov = {version = "^6.2.1", python = ">=3.9,<4.0"}
 numpy = {version = "<2.3", python = ">=3.9"}
 h5py = {version = "^3.14.0", python = ">=3.9"}
+pytest-durations = {version = "^1.5.2", python = ">=3.9,<4.0"}
 
 [tool.poetry.extras]
 complete = [
